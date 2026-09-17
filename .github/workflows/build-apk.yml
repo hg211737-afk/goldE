@@ -46,8 +46,8 @@ jobs:
           java-version: 17
           cache: 'gradle'
 
-      - name: Set up Android SDK Tools
-        uses: android-actions/setup-android@v3
+    
+    
 
       - name: Initialize or Sync Capacitor Android Project
         run: |
