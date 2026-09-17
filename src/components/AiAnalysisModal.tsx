@@ -168,12 +168,51 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
               <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-850 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-sky-400 font-bold text-xs">
                   <Cpu className="w-3.5 h-3.5" />
-                  <span>قراءة تدفق الأوامر ودلتا الفوت برنت (Order Flow & Delta)</span>
+                  <span>قراءة تدفق الأوامر ودلتا الفوت برنت (Order Flow & Footprint Delta)</span>
                 </div>
                 <p className="text-slate-300 leading-relaxed text-xs">
                   {analysis.orderFlowInsight}
                 </p>
               </div>
+
+              {/* Futures Flow Insight */}
+              {analysis.futuresFlowInsight && (
+                <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-850 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    <span>تدفق الفيوتشرز، الفائدة المفتوحة والـ VWAP (Futures Flow & OI)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed text-xs">
+                    {analysis.futuresFlowInsight}
+                  </p>
+                </div>
+              )}
+
+              {/* Options Flow Insight */}
+              {analysis.optionsFlowInsight && (
+                <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-850 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs">
+                    <Award className="w-3.5 h-3.5" />
+                    <span>تدفق عقود الخيارات والجاما وسعر الألم الأقصى (Options Flow & GEX)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed text-xs">
+                    {analysis.optionsFlowInsight}
+                  </p>
+                </div>
+              )}
+
+              {/* Order Clusters & Limit Walls Insight */}
+              {analysis.orderClustersInsight && (
+                <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-850 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-rose-400 font-bold text-xs">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>مناطق تجمع الأوردرات وجدران الليمت (Order Clusters & Limit Walls)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed text-xs">
+                    {analysis.orderClustersInsight}
+                  </p>
+                </div>
+              )}
 
               {/* Proposed Trade Setup */}
               {analysis.setup && (

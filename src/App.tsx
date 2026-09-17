@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   GoldQuote,
   MarketDepth,
@@ -9,6 +9,10 @@ import {
   ChartViewMode,
   TerminalSettings,
   AIAnalysisResult,
+  FuturesFlowData,
+  OptionsFlowData,
+  OrderCluster,
+  ConfluenceTradeSetup,
 } from './types';
 import {
   generateFootprintBars,
@@ -16,12 +20,22 @@ import {
   setupMarketSocket,
   fetchDirectBinanceSnapshot,
 } from './services/marketService';
+import {
+  calculateFuturesFlow,
+  calculateOptionsFlow,
+  detectOrderClusters,
+  generateConfluenceSetups,
+} from './services/advancedFlowService';
 import { fetchOrderFlowAnalysis } from './services/aiService';
 import { Header } from './components/Header';
 import { FootprintChart } from './components/FootprintChart';
 import { LiquidityHeatmap } from './components/LiquidityHeatmap';
 import { TradingViewWidget } from './components/TradingViewWidget';
 import { CvdAnalysisView } from './components/CvdAnalysisView';
+import { FuturesFlowView } from './components/FuturesFlowView';
+import { OptionsFlowView } from './components/OptionsFlowView';
+import { OrderClustersView } from './components/OrderClustersView';
+import { ConfluenceSignalsModal } from './components/ConfluenceSignalsModal';
 import { DomLadder } from './components/DomLadder';
 import { TimeAndSales } from './components/TimeAndSales';
 import { LiquidityZonesList } from './components/LiquidityZonesList';
@@ -36,6 +50,8 @@ import {
   Flame,
   Activity,
   Maximize2,
+  Crosshair,
+  Award,
 } from 'lucide-react';
 
 export default function App() {
@@ -90,10 +106,40 @@ export default function App() {
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [isConfluenceModalOpen, setIsConfluenceModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
+  // Advanced Flow & Multi-Method Institutional Analytics
+  const futuresData = useMemo<FuturesFlowData>(
+    () => calculateFuturesFlow(quote.price, bars, depth),
+    [quote.price, bars, depth]
+  );
+
+  const optionsData = useMemo<OptionsFlowData>(
+    () => calculateOptionsFlow(quote.price, bars),
+    [quote.price, bars]
+  );
+
+  const orderClusters = useMemo<OrderCluster[]>(
+    () => detectOrderClusters(depth, quote.price, bars),
+    [depth, quote.price, bars]
+  );
+
+  const confluenceSetups = useMemo<ConfluenceTradeSetup[]>(
+    () =>
+      generateConfluenceSetups(
+        quote.price,
+        bars,
+        futuresData,
+        optionsData,
+        orderClusters,
+        liquidityZones
+      ),
+    [quote.price, bars, futuresData, optionsData, orderClusters, liquidityZones]
+  );
+
   // Mobile Bottom Navigation Tab State (for Phone/APK view)
-  const [mobileTab, setMobileTab] = useState<'chart' | 'liquidity' | 'dom' | 'tape'>('chart');
+  const [mobileTab, setMobileTab] = useState<'chart' | 'liquidity' | 'dom' | 'tape' | 'confluence'>('chart');
 
   // Liquidity Sweep Alert Banner
   const [activeAlert, setActiveAlert] = useState<string | null>(null);
@@ -270,6 +316,9 @@ export default function App() {
         pocPrice: lastBar ? `$${lastBar.pocPrice.toFixed(2)}` : `$${(quote.price - 0.5).toFixed(2)}`,
         fvgZones: fvgZones.length ? fvgZones : ['$2738.00 - $2739.50'],
         timeframe,
+        futuresData,
+        optionsData,
+        clustersData: orderClusters,
       });
 
       setAiAnalysis(result);
@@ -290,6 +339,7 @@ export default function App() {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onOpenAiModal={handleTriggerAiAnalysis}
+        onOpenConfluenceModal={() => setIsConfluenceModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         isAiLoading={isAiLoading}
         activeLiquidityCount={liquidityZones.filter((z) => z.status === 'untested').length}
@@ -317,6 +367,28 @@ export default function App() {
               currentPrice={quote.price}
               liquidityZones={liquidityZones}
               settings={settings}
+            />
+          )}
+
+          {viewMode === 'futures' && (
+            <FuturesFlowView
+              futuresData={futuresData}
+              quote={quote}
+            />
+          )}
+
+          {viewMode === 'options' && (
+            <OptionsFlowView
+              optionsData={optionsData}
+              quote={quote}
+            />
+          )}
+
+          {viewMode === 'clusters' && (
+            <OrderClustersView
+              clusters={orderClusters}
+              quote={quote}
+              depth={depth}
             />
           )}
 
@@ -401,7 +473,13 @@ export default function App() {
             )}
 
             {(mobileTab === 'dom' || (mobileTab === 'chart' && sidebarTab === 'dom')) && (
-              <DomLadder depth={depth} currentPrice={quote.price} spread={quote.spread} />
+              <DomLadder
+                depth={depth}
+                currentPrice={quote.price}
+                spread={quote.spread}
+                imbalanceThreshold={settings.imbalanceRatio}
+                onThresholdChange={(ratio) => setSettings((s) => ({ ...s, imbalanceRatio: ratio }))}
+              />
             )}
 
             {(mobileTab === 'tape' || (mobileTab === 'chart' && sidebarTab === 'tape')) && (
@@ -487,6 +565,14 @@ export default function App() {
         </button>
 
         <button
+          onClick={() => setIsConfluenceModalOpen(true)}
+          className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 shadow-xs transition-all active:scale-95"
+        >
+          <Crosshair className="w-4 h-4 text-emerald-400" />
+          <span>صفقات A+</span>
+        </button>
+
+        <button
           onClick={handleTriggerAiAnalysis}
           className="flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-bold text-slate-950 bg-gradient-to-r from-amber-500 to-yellow-600 shadow-sm transition-all active:scale-95"
         >
@@ -494,6 +580,14 @@ export default function App() {
           <span>الذكاء</span>
         </button>
       </nav>
+
+      {/* Multi-Confluence High-Accuracy Trade Setups Modal */}
+      <ConfluenceSignalsModal
+        isOpen={isConfluenceModalOpen}
+        onClose={() => setIsConfluenceModalOpen(false)}
+        setups={confluenceSetups}
+        currentPrice={quote.price}
+      />
 
       {/* AI Analysis Modal */}
       <AiAnalysisModal

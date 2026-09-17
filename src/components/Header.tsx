@@ -22,6 +22,7 @@ interface HeaderProps {
   onViewModeChange: (mode: ChartViewMode) => void;
   onOpenAiModal: () => void;
   onOpenSettingsModal: () => void;
+  onOpenConfluenceModal?: () => void;
   isAiLoading: boolean;
   activeLiquidityCount: number;
 }
@@ -34,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   onViewModeChange,
   onOpenAiModal,
   onOpenSettingsModal,
+  onOpenConfluenceModal,
   isAiLoading,
   activeLiquidityCount,
 }) => {
@@ -156,10 +158,10 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* View Mode Switchers */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5">
+          <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 overflow-x-auto max-w-full">
             <button
               onClick={() => onViewModeChange('footprint')}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
                 viewMode === 'footprint'
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -167,38 +169,75 @@ export const Header: React.FC<HeaderProps> = ({
               title="شارت تدفق الأوامر الفوت برنت - Bid x Ask Imbalances"
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>فوت برنت (Footprint)</span>
+              <span>فوت برنت</span>
+            </button>
+
+            <button
+              onClick={() => onViewModeChange('futures')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
+                viewMode === 'futures'
+                  ? 'bg-amber-600 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+              title="تحليل تدفق عقود الفيوتشرز، الفائدة المفتوحة ومعدل التمويل والتصفيات"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>فيوتشر فلو</span>
+            </button>
+
+            <button
+              onClick={() => onViewModeChange('options')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
+                viewMode === 'options'
+                  ? 'bg-emerald-600 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+              title="تحليل تدفق عقود الخيارات (Options Flow)، الجاما GEX وسعر الألم الأقصى"
+            >
+              <Radio className="w-3.5 h-3.5" />
+              <span>أوبشن فلو</span>
+            </button>
+
+            <button
+              onClick={() => onViewModeChange('clusters')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
+                viewMode === 'clusters'
+                  ? 'bg-rose-600 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+              title="كاشف مناطق تجمع الأوردرات وجدران الليمت المعلقة"
+            >
+              <Flame className="w-3.5 h-3.5" />
+              <span>تجمع الأوردرات</span>
             </button>
 
             <button
               onClick={() => onViewModeChange('heatmap')}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
                 viewMode === 'heatmap'
                   ? 'bg-amber-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
               }`}
               title="الخريطة الحرارية لعمق السيولة وحشود أوامر التصفية"
             >
-              <Flame className="w-3.5 h-3.5" />
-              <span>هيت ماب (Heatmap)</span>
+              <span>هيت ماب</span>
             </button>
 
             <button
               onClick={() => onViewModeChange('cvd')}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
                 viewMode === 'cvd'
                   ? 'bg-teal-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
               }`}
               title="دلتا الحجم التراكمي وتدفق الامتصاص المؤسسي"
             >
-              <Activity className="w-3.5 h-3.5" />
-              <span>CVD ودلتا</span>
+              <span>CVD</span>
             </button>
 
             <button
               onClick={() => onViewModeChange('tradingview')}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
                 viewMode === 'tradingview'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -209,6 +248,18 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="hidden sm:inline">تريدنج فيو</span>
             </button>
           </div>
+
+          {/* High-Precision Confluence Signals Trigger */}
+          {onOpenConfluenceModal && (
+            <button
+              onClick={onOpenConfluenceModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all cursor-pointer active:scale-95"
+              title="صفقات التوافق الرباعي عالية الدقة"
+            >
+              <span className="w-2 h-2 rounded-full bg-slate-950 animate-ping"></span>
+              <span>صفقات A+ مؤسسية</span>
+            </button>
+          )}
 
           {/* AI Institutional Analysis Trigger */}
           <button

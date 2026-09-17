@@ -1,6 +1,13 @@
 export type TimeFrame = '1m' | '3m' | '5m' | '15m' | '1h' | '4h';
 
-export type ChartViewMode = 'footprint' | 'heatmap' | 'cvd' | 'tradingview';
+export type ChartViewMode =
+  | 'footprint'
+  | 'heatmap'
+  | 'futures'
+  | 'options'
+  | 'clusters'
+  | 'cvd'
+  | 'tradingview';
 
 export interface GoldQuote {
   symbol: string;
@@ -41,6 +48,7 @@ export interface FootprintBar {
   maxDelta: number;
   levels: FootprintLevel[];
   pocPrice: number;
+  vwap?: number;
 }
 
 export interface DepthLevel {
@@ -80,12 +88,127 @@ export interface LiquidityZone {
   description: string;
 }
 
+// === 1. Futures Flow Types ===
+export interface LiquidationCluster {
+  price: number;
+  type: 'long_liq' | 'short_liq';
+  estimatedVolumeOz: number;
+  intensity: number; // 0-100%
+  description: string;
+}
+
+export interface FuturesFlowData {
+  openInterestOz: number;
+  oiChangePercent24h: number;
+  fundingRate: number;              // e.g. +0.012%
+  predictedFundingRate: number;
+  nextFundingCountdown: string;
+  longAccountPercent: number;       // e.g. 58.4%
+  shortAccountPercent: number;      // e.g. 41.6%
+  longShortRatio: number;           // e.g. 1.40
+  totalLongLiquidations24hUsd: number;
+  totalShortLiquidations24hUsd: number;
+  vwap: number;
+  vwapBandUpper1: number;
+  vwapBandLower1: number;
+  vwapBandUpper2: number;
+  vwapBandLower2: number;
+  liquidationClusters: LiquidationCluster[];
+  futuresCvdTrend: 'Aggressive Long Accumulation' | 'Short Squeeze Pressure' | 'Passive Absorption' | 'Distribution';
+}
+
+// === 2. Options Flow Types ===
+export interface OptionStrikeData {
+  strike: number;
+  callOI: number;
+  putOI: number;
+  callVolume: number;
+  putVolume: number;
+  netGex: number; // Gamma Exposure in $M
+}
+
+export interface OptionSweepTrade {
+  id: string;
+  timestamp: number;
+  strike: number;
+  expiration: string;
+  contractType: 'CALL' | 'PUT';
+  action: 'SWEEP' | 'BLOCK' | 'SPLIT';
+  sentiment: 'BULLISH' | 'BEARISH';
+  premiumUsd: number;
+  contracts: number;
+  impliedVolatility: number;
+  spotPriceAtTrade: number;
+  underlyingGoldEqOz: number;
+}
+
+export interface OptionsFlowData {
+  putCallRatio: number;              // e.g. 0.68
+  pcrSentiment: 'شديد الإيجابية (Bullish)' | 'محايد (Neutral)' | 'سلبي حذر (Bearish)';
+  maxPainStrike: number;             // e.g. 2740.00
+  totalCallOpenInterest: number;
+  totalPutOpenInterest: number;
+  netGammaExposure: number;          // e.g. +$184M (Positive gamma = Low volatility pinning, Negative gamma = High volatility explosive breakout)
+  gammaRegime: 'Positive Gamma (Pinning/Mean Reversion)' | 'Negative Gamma (High Volatility/Breakout)';
+  callResistanceWall: number;        // Call wall (dealers short call hedge)
+  putSupportFloor: number;           // Put floor (dealers short put hedge)
+  strikes: OptionStrikeData[];
+  institutionalSweeps: OptionSweepTrade[];
+}
+
+// === 3. Order Clusters & Limit Walls ===
+export interface OrderCluster {
+  id: string;
+  type: 'BUY_WALL' | 'SELL_WALL' | 'HVN' | 'LVN';
+  priceLow: number;
+  priceHigh: number;
+  centerPrice: number;
+  totalLots: number;
+  estimatedValueUsd: number;
+  strength: 'CRITICAL' | 'STRONG' | 'MODERATE';
+  distanceUsd: number;
+  pipsDistance: number;
+  isAboveCurrentPrice: boolean;
+  orderCount: number;
+  description: string;
+}
+
+// === 4. High-Precision Confluence Signal Engine ===
+export interface ConfluenceFactor {
+  name: string;
+  signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  weightPercent: number;
+  detail: string;
+}
+
+export interface ConfluenceTradeSetup {
+  id: string;
+  symbol: string;
+  type: 'BUY_LONG' | 'SELL_SHORT';
+  grade: 'A+ المؤسسية الفائقة' | 'A عالية الاحتمالية' | 'B جيدة';
+  confluenceScore: number; // 0 to 100
+  entryRange: [number, number];
+  stopLoss: number;
+  stopLossProtection: string;
+  tp1: number;
+  tp2: number;
+  tp3: number;
+  riskRewardRatio: string;
+  status: 'ACTIVE' | 'TRIGGERED' | 'WAITING_RETEST';
+  reasons: string[];
+  confluenceFactors: ConfluenceFactor[];
+  timestamp: number;
+}
+
 export interface AIAnalysisResult {
   bias: string;
   confidenceScore: number;
   summary: string;
   liquidityAnalysis: string;
   orderFlowInsight: string;
+  futuresFlowInsight?: string;
+  optionsFlowInsight?: string;
+  orderClustersInsight?: string;
   setup: {
     type: string;
     entryZone: string;
