@@ -344,3 +344,91 @@ export function setupMarketSocket(
     if (ws) ws.close();
   };
 }
+
+/**
+ * Direct public Binance REST fallback for APK / Standalone environments
+ * when no Express backend is available locally on the device.
+ */
+export async function fetchDirectBinanceSnapshot(interval: string = '5m') {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4500);
+
+    const [tickerRes, depthRes, klinesRes, tradesRes] = await Promise.allSettled([
+      fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT', { signal: controller.signal }),
+      fetch('https://api.binance.com/api/v3/depth?symbol=PAXGUSDT&limit=30', { signal: controller.signal }),
+      fetch(`https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=${interval}&limit=50`, { signal: controller.signal }),
+      fetch('https://api.binance.com/api/v3/trades?symbol=PAXGUSDT&limit=30', { signal: controller.signal }),
+    ]);
+
+    clearTimeout(timeout);
+
+    let price = 2742.50;
+    let quoteData: any = null;
+
+    if (tickerRes.status === 'fulfilled' && tickerRes.value.ok) {
+      const ticker = await tickerRes.value.json();
+      price = parseFloat(ticker.lastPrice);
+      quoteData = {
+        price,
+        bid: parseFloat(ticker.bidPrice) || price - 0.25,
+        ask: parseFloat(ticker.askPrice) || price + 0.25,
+        spread: Number(((parseFloat(ticker.askPrice) || price + 0.25) - (parseFloat(ticker.bidPrice) || price - 0.25)).toFixed(2)),
+        high24h: parseFloat(ticker.highPrice),
+        low24h: parseFloat(ticker.lowPrice),
+        change24h: parseFloat(ticker.priceChange),
+        changePercent24h: parseFloat(ticker.priceChangePercent),
+        volume24h: parseFloat(ticker.volume),
+        timestamp: Date.now(),
+      };
+    }
+
+    let depthData: any = null;
+    if (depthRes.status === 'fulfilled' && depthRes.value.ok) {
+      const rawDepth = await depthRes.value.json();
+      if (rawDepth.bids && rawDepth.asks) {
+        depthData = {
+          bids: rawDepth.bids.map((b: string[]) => [parseFloat(b[0]), parseFloat(b[1])]),
+          asks: rawDepth.asks.map((a: string[]) => [parseFloat(a[0]), parseFloat(a[1])]),
+        };
+      }
+    }
+
+    let tradesData: any[] = [];
+    if (tradesRes.status === 'fulfilled' && tradesRes.value.ok) {
+      const rawTrades = await tradesRes.value.json();
+      tradesData = rawTrades.map((t: any) => ({
+        id: String(t.id),
+        price: parseFloat(t.price),
+        qty: parseFloat(t.qty),
+        isBuyerMaker: t.isBuyerMaker,
+        time: t.time,
+      }));
+    }
+
+    let klinesData: any[] = [];
+    if (klinesRes.status === 'fulfilled' && klinesRes.value.ok) {
+      const rawKlines = await klinesRes.value.json();
+      klinesData = rawKlines.map((k: any) => ({
+        time: k[0],
+        open: parseFloat(k[1]),
+        high: parseFloat(k[2]),
+        low: parseFloat(k[3]),
+        close: parseFloat(k[4]),
+        volume: parseFloat(k[5]),
+        takerBuyBaseVolume: parseFloat(k[9]),
+      }));
+    }
+
+    return {
+      ...(quoteData || { price }),
+      depth: depthData,
+      trades: tradesData,
+      klines: klinesData,
+    };
+  } catch (err) {
+    console.warn('Direct Binance fetch fallback warning:', err);
+    return null;
+  }
+}
+

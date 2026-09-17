@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#141926"/>
+      <stop offset="100%" stop-color="#090C12"/>
+    </linearGradient>
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="redGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F87171"/>
+      <stop offset="100%" stop-color="#DC2626"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded squircle -->
+  <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
+  <rect width="510" height="510" x="1" y="1" rx="109" fill="none" stroke="#F59E0B" stroke-opacity="0.3" stroke-width="2"/>
+
+  <!-- Candlesticks & Footprint Bars -->
+  <!-- Left Green Candle -->
+  <line x1="140" y1="120" x2="140" y2="380" stroke="#34D399" stroke-width="6" stroke-linecap="round"/>
+  <rect x="115" y="180" width="50" height="150" rx="8" fill="url(#greenGrad)"/>
+
+  <!-- Middle Gold Bullion Bar -->
+  <line x1="256" y1="90" x2="256" y2="420" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/>
+  <rect x="220" y="140" width="72" height="230" rx="10" fill="url(#goldGrad)" stroke="#FEF3C7" stroke-width="2"/>
+
+  <!-- Right Red Candle -->
+  <line x1="372" y1="150" x2="372" y2="390" stroke="#F87171" stroke-width="6" stroke-linecap="round"/>
+  <rect x="347" y="210" width="50" height="130" rx="8" fill="url(#redGrad)"/>
+
+  <!-- Au Symbol in center -->
+  <text x="256" y="275" font-family="'JetBrains Mono', monospace" font-size="44" font-weight="900" fill="#111622" text-anchor="middle">Au</text>
+
+  <!-- Horizontal Order Flow Delta levels -->
+  <line x1="222" y1="190" x2="290" y2="190" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="2"/>
+  <line x1="222" y1="230" x2="290" y2="230" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="2"/>
+  <line x1="222" y1="315" x2="290" y2="315" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="2"/>
+
+  <!-- Ambient Golden Glow -->
+  <circle cx="256" cy="256" r="180" fill="#F59E0B" fill-opacity="0.06"/>
+</svg>

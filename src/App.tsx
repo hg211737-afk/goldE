@@ -14,6 +14,7 @@ import {
   generateFootprintBars,
   detectLiquidityZones,
   setupMarketSocket,
+  fetchDirectBinanceSnapshot,
 } from './services/marketService';
 import { fetchOrderFlowAnalysis } from './services/aiService';
 import { Header } from './components/Header';
@@ -91,6 +92,9 @@ export default function App() {
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
+  // Mobile Bottom Navigation Tab State (for Phone/APK view)
+  const [mobileTab, setMobileTab] = useState<'chart' | 'liquidity' | 'dom' | 'tape'>('chart');
+
   // Liquidity Sweep Alert Banner
   const [activeAlert, setActiveAlert] = useState<string | null>(null);
 
@@ -115,26 +119,40 @@ export default function App() {
     }
   }, [settings.soundAlerts]);
 
-  // Initial load and periodic polling from backend API
+  // Initial load and periodic polling with automatic APK/Direct fallback
   const fetchMarketSnapshot = useCallback(async () => {
+    let data: any = null;
+
     try {
       const res = await fetch(`/api/gold/live?interval=${timeframe}`);
-      if (!res.ok) return;
-      const data = await res.json();
+      if (res.ok) {
+        data = await res.json();
+      }
+    } catch {
+      // If backend is not running (e.g. mobile APK standalone mode)
+    }
 
+    if (!data || !data.price) {
+      // Direct Binance fallback for Android APK and offline/standalone mode
+      data = await fetchDirectBinanceSnapshot(timeframe);
+    }
+
+    if (!data) return;
+
+    try {
       if (data.price) {
         setQuote((prev) => ({
           ...prev,
           price: data.price,
-          bid: data.bid,
-          ask: data.ask,
-          spread: data.spread,
-          high24h: data.high24h,
-          low24h: data.low24h,
-          change24h: data.change24h,
-          changePercent24h: data.changePercent24h,
-          volume24h: data.volume24h,
-          timestamp: data.timestamp,
+          bid: data.bid || data.price - 0.2,
+          ask: data.ask || data.price + 0.2,
+          spread: data.spread || 0.4,
+          high24h: data.high24h || data.price + 15,
+          low24h: data.low24h || data.price - 15,
+          change24h: data.change24h || 0,
+          changePercent24h: data.changePercent24h || 0,
+          volume24h: data.volume24h || 1200,
+          timestamp: data.timestamp || Date.now(),
         }));
       }
 
@@ -160,13 +178,13 @@ export default function App() {
         setDepth({ bids, asks, maxQty });
       }
 
-      if (data.trades && Array.isArray(data.trades)) {
+      if (data.trades && Array.isArray(data.trades) && data.trades.length > 0) {
         setTrades((prev) => {
           const newTrades = data.trades.map((t: any) => ({
             id: t.id,
             price: t.price,
             qty: t.qty,
-            side: t.isBuyerMaker ? 'sell' : 'buy',
+            side: t.side || (t.isBuyerMaker ? 'sell' : 'buy'),
             time: t.time,
             isWhale: t.qty >= settings.whaleThreshold,
           }));
@@ -186,7 +204,7 @@ export default function App() {
         setLiquidityZones(detectLiquidityZones(data.price || quote.price, generatedBars));
       }
     } catch (err) {
-      console.error('Failed to fetch gold market snapshot:', err);
+      console.error('Failed to parse gold market snapshot:', err);
     }
   }, [timeframe, settings.tickSize, settings.imbalanceRatio, settings.whaleThreshold]);
 
@@ -285,10 +303,14 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Workspace Body */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden p-2 sm:p-3 gap-2 sm:gap-3">
-        {/* Center / Primary Chart Area */}
-        <main className="flex-1 flex flex-col h-full min-h-[350px] overflow-hidden">
+      {/* Main Workspace Body: Adaptive for Mobile APK and Desktop */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden p-1.5 sm:p-3 gap-1.5 sm:gap-3">
+        {/* Primary Chart Area (Visible when mobileTab === 'chart' on mobile, or always on desktop) */}
+        <main
+          className={`flex-1 flex flex-col h-full min-h-[300px] overflow-hidden ${
+            mobileTab === 'chart' ? 'flex' : 'hidden lg:flex'
+          }`}
+        >
           {viewMode === 'footprint' && (
             <FootprintChart
               bars={bars}
@@ -318,14 +340,21 @@ export default function App() {
           )}
         </main>
 
-        {/* Right Sidebar: DOM Ladder, Time & Sales, and Liquidity Zones */}
-        <aside className="w-full lg:w-80 xl:w-96 flex flex-col h-72 lg:h-full shrink-0 bg-[#111622] rounded-xl border border-slate-800/80 overflow-hidden">
+        {/* Sidebar Panel: On desktop shown alongside chart. On mobile, shown when user selects liquidity, dom, or tape */}
+        <aside
+          className={`w-full lg:w-80 xl:w-96 flex flex-col shrink-0 bg-[#111622] rounded-xl border border-slate-800/80 overflow-hidden ${
+            mobileTab !== 'chart' ? 'flex flex-1 h-full' : 'hidden lg:flex lg:h-full'
+          }`}
+        >
           {/* Sidebar Tab Selector */}
           <div className="flex items-center bg-slate-900 border-b border-slate-800 p-1">
             <button
-              onClick={() => setSidebarTab('liquidity')}
+              onClick={() => {
+                setSidebarTab('liquidity');
+                setMobileTab('liquidity');
+              }}
               className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                sidebarTab === 'liquidity'
+                (mobileTab === 'liquidity' || sidebarTab === 'liquidity')
                   ? 'bg-amber-500 text-slate-950 shadow-xs'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
@@ -335,9 +364,12 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setSidebarTab('dom')}
+              onClick={() => {
+                setSidebarTab('dom');
+                setMobileTab('dom');
+              }}
               className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                sidebarTab === 'dom'
+                (mobileTab === 'dom' || sidebarTab === 'dom')
                   ? 'bg-amber-500 text-slate-950 shadow-xs'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
@@ -347,9 +379,12 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setSidebarTab('tape')}
+              onClick={() => {
+                setSidebarTab('tape');
+                setMobileTab('tape');
+              }}
               className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                sidebarTab === 'tape'
+                (mobileTab === 'tape' || sidebarTab === 'tape')
                   ? 'bg-amber-500 text-slate-950 shadow-xs'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
@@ -361,15 +396,15 @@ export default function App() {
 
           {/* Active Sidebar Content */}
           <div className="flex-1 overflow-hidden">
-            {sidebarTab === 'liquidity' && (
+            {(mobileTab === 'liquidity' || (mobileTab === 'chart' && sidebarTab === 'liquidity')) && (
               <LiquidityZonesList zones={liquidityZones} currentPrice={quote.price} />
             )}
 
-            {sidebarTab === 'dom' && (
+            {(mobileTab === 'dom' || (mobileTab === 'chart' && sidebarTab === 'dom')) && (
               <DomLadder depth={depth} currentPrice={quote.price} spread={quote.spread} />
             )}
 
-            {sidebarTab === 'tape' && (
+            {(mobileTab === 'tape' || (mobileTab === 'chart' && sidebarTab === 'tape')) && (
               <TimeAndSales trades={trades} />
             )}
           </div>
@@ -379,7 +414,7 @@ export default function App() {
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               <span className="text-[11px] text-slate-300">
-                تدفق الأوامر الحالي: <strong className="text-amber-400 font-mono">XAU/USD</strong>
+                تدفق الأوامر: <strong className="text-amber-400 font-mono">XAU/USD</strong>
               </span>
             </div>
             <button
@@ -391,6 +426,74 @@ export default function App() {
           </div>
         </aside>
       </div>
+
+      {/* Mobile Bottom Dock Navigation (Native App Feel for APK testing) */}
+      <nav className="lg:hidden bg-[#111622] border-t border-slate-800/90 px-2 py-1.5 flex items-center justify-around z-40 select-none pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))]">
+        <button
+          onClick={() => setMobileTab('chart')}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+            mobileTab === 'chart'
+              ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>الشارت</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setMobileTab('liquidity');
+            setSidebarTab('liquidity');
+          }}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+            mobileTab === 'liquidity'
+              ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>السيولة</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setMobileTab('dom');
+            setSidebarTab('dom');
+          }}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+            mobileTab === 'dom'
+              ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          <span>عمق DOM</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setMobileTab('tape');
+            setSidebarTab('tape');
+          }}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+            mobileTab === 'tape'
+              ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Radio className="w-4 h-4" />
+          <span>الصفقات</span>
+        </button>
+
+        <button
+          onClick={handleTriggerAiAnalysis}
+          className="flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-bold text-slate-950 bg-gradient-to-r from-amber-500 to-yellow-600 shadow-sm transition-all active:scale-95"
+        >
+          <Flame className="w-4 h-4" />
+          <span>الذكاء</span>
+        </button>
+      </nav>
 
       {/* AI Analysis Modal */}
       <AiAnalysisModal
