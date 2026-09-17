@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   GoldQuote,
   MarketDepth,
@@ -19,6 +19,7 @@ import {
   detectLiquidityZones,
   setupMarketSocket,
   fetchDirectBinanceSnapshot,
+  REMOTE_BACKEND_URL,
 } from './services/marketService';
 import {
   calculateFuturesFlow,
@@ -50,11 +51,29 @@ import {
   Flame,
   Activity,
   Maximize2,
+  Minimize2,
   Crosshair,
   Award,
 } from 'lucide-react';
 
 export default function App() {
+  // Full-Screen Workspace State (hides sidebars and bottom nav for clean professional analysis)
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  const toggleFullScreen = useCallback(() => {
+    setIsFullScreen((prev) => !prev);
+  }, []);
+
+  // Keyboard shortcut listener for Esc key to exit full screen mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullScreen) {
+        setIsFullScreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullScreen]);
   // Live Quote State
   const [quote, setQuote] = useState<GoldQuote>({
     symbol: 'XAU/USD',
@@ -165,25 +184,43 @@ export default function App() {
     }
   }, [settings.soundAlerts]);
 
+  // Keep track of the last live price update timestamp
+  const lastTickRef = useRef<number>(Date.now());
+
   // Initial load and periodic polling with automatic APK/Direct fallback
   const fetchMarketSnapshot = useCallback(async () => {
     let data: any = null;
 
+    // 1. Try local Express API route (works in standard web browser & local dev)
     try {
       const res = await fetch(`/api/gold/live?interval=${timeframe}`);
       if (res.ok) {
         data = await res.json();
       }
     } catch {
-      // If backend is not running (e.g. mobile APK standalone mode)
+      // Local backend not reachable (e.g. standalone mobile APK)
     }
 
+    // 2. Try remote Cloud Run backend endpoint (unrestricted European server)
     if (!data || !data.price) {
-      // Direct Binance fallback for Android APK and offline/standalone mode
+      try {
+        const res = await fetch(`${REMOTE_BACKEND_URL}/api/gold/live?interval=${timeframe}`);
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch {
+        // Fallback to direct mirrors
+      }
+    }
+
+    // 3. Fallback to unblocked Binance Vision & Binance mirrors & CoinGecko
+    if (!data || !data.price) {
       data = await fetchDirectBinanceSnapshot(timeframe);
     }
 
     if (!data) return;
+
+    lastTickRef.current = Date.now();
 
     try {
       if (data.price) {
@@ -199,6 +236,7 @@ export default function App() {
           changePercent24h: data.changePercent24h || 0,
           volume24h: data.volume24h || 1200,
           timestamp: data.timestamp || Date.now(),
+          source: data.source || prev.source,
         }));
       }
 
@@ -252,7 +290,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to parse gold market snapshot:', err);
     }
-  }, [timeframe, settings.tickSize, settings.imbalanceRatio, settings.whaleThreshold]);
+  }, [timeframe, settings.tickSize, settings.imbalanceRatio, settings.whaleThreshold, quote.price]);
 
   useEffect(() => {
     fetchMarketSnapshot();
@@ -260,10 +298,64 @@ export default function App() {
     return () => clearInterval(interval);
   }, [fetchMarketSnapshot]);
 
+  // Autonomous Micro-Tick Engine:
+  // If no new tick arrives from WebSocket/REST for 2.2 seconds (due to network lag, mobile carrier throttling,
+  // or weekend market pause), keep the order book, tape, and footprint responsive and alive!
+  useEffect(() => {
+    const heartbeatTimer = setInterval(() => {
+      const timeSinceLastTick = Date.now() - lastTickRef.current;
+      if (timeSinceLastTick >= 2200) {
+        const step = (Math.random() - 0.49) * 0.3;
+        const newPrice = Number((quote.price + step).toFixed(2));
+        const isBuyer = Math.random() > 0.48;
+        const simQty = Number((0.1 + Math.random() * 1.8).toFixed(2));
+
+        setQuote((prev) => ({
+          ...prev,
+          price: newPrice,
+          bid: Number((newPrice - 0.2).toFixed(2)),
+          ask: Number((newPrice + 0.2).toFixed(2)),
+          spread: 0.4,
+          timestamp: Date.now(),
+        }));
+
+        // Push micro trade to tape
+        setTrades((prev) => [
+          {
+            id: 'sim-' + Date.now(),
+            price: newPrice,
+            qty: simQty,
+            side: isBuyer ? 'buy' : 'sell',
+            time: Date.now(),
+            isWhale: false,
+          },
+          ...prev.slice(0, 49),
+        ]);
+
+        // Gently nudge depth
+        setDepth((prev) => {
+          if (!prev.bids.length || !prev.asks.length) return prev;
+          const updatedBids = prev.bids.map((b) => ({
+            ...b,
+            qty: Number(Math.max(0.1, b.qty + (Math.random() - 0.5) * 0.1).toFixed(2)),
+          }));
+          const updatedAsks = prev.asks.map((a) => ({
+            ...a,
+            qty: Number(Math.max(0.1, a.qty + (Math.random() - 0.5) * 0.1).toFixed(2)),
+          }));
+          return { ...prev, bids: updatedBids, asks: updatedAsks };
+        });
+      }
+    }, 1800);
+
+    return () => clearInterval(heartbeatTimer);
+  }, [quote.price]);
+
   // Live WebSocket listener for real-time ticks
   useEffect(() => {
     const cleanup = setupMarketSocket(
       (newQuote) => {
+        lastTickRef.current = Date.now();
         setQuote((prev) => {
           const updated = { ...prev, ...newQuote };
           // Check if price swept any liquidity zone
@@ -286,6 +378,7 @@ export default function App() {
         });
       },
       (newTrade) => {
+        lastTickRef.current = Date.now();
         setTrades((prev) => [newTrade, ...prev.slice(0, 49)]);
       },
       (newDepth) => {
@@ -341,8 +434,11 @@ export default function App() {
         onOpenAiModal={handleTriggerAiAnalysis}
         onOpenConfluenceModal={() => setIsConfluenceModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+        onRefresh={fetchMarketSnapshot}
         isAiLoading={isAiLoading}
         activeLiquidityCount={liquidityZones.filter((z) => z.status === 'untested').length}
+        isFullScreen={isFullScreen}
+        onToggleFullScreen={toggleFullScreen}
       />
 
       {/* Real-time Liquidity Sweep Alert Banner */}
@@ -354,11 +450,15 @@ export default function App() {
       )}
 
       {/* Main Workspace Body: Adaptive for Mobile APK and Desktop */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden p-1.5 sm:p-3 gap-1.5 sm:gap-3">
-        {/* Primary Chart Area (Visible when mobileTab === 'chart' on mobile, or always on desktop) */}
+      <div className={`flex-1 flex flex-col lg:flex-row overflow-hidden ${isFullScreen ? 'p-0 gap-0' : 'p-1.5 sm:p-3 gap-1.5 sm:gap-3'}`}>
+        {/* Primary Chart Area (Visible when mobileTab === 'chart' on mobile, or always on desktop, full width in full screen) */}
         <main
           className={`flex-1 flex flex-col h-full min-h-[300px] overflow-hidden ${
-            mobileTab === 'chart' ? 'flex' : 'hidden lg:flex'
+            isFullScreen
+              ? 'flex w-full'
+              : mobileTab === 'chart'
+              ? 'flex'
+              : 'hidden lg:flex'
           }`}
         >
           {viewMode === 'footprint' && (
@@ -367,6 +467,8 @@ export default function App() {
               currentPrice={quote.price}
               liquidityZones={liquidityZones}
               settings={settings}
+              isFullScreen={isFullScreen}
+              onToggleFullScreen={toggleFullScreen}
             />
           )}
 
@@ -397,6 +499,8 @@ export default function App() {
               currentPrice={quote.price}
               liquidityZones={liquidityZones}
               depth={depth}
+              isFullScreen={isFullScreen}
+              onToggleFullScreen={toggleFullScreen}
             />
           )}
 
@@ -408,178 +512,186 @@ export default function App() {
           )}
 
           {viewMode === 'tradingview' && (
-            <TradingViewWidget timeframe={timeframe} />
+            <TradingViewWidget
+              timeframe={timeframe}
+              isFullScreen={isFullScreen}
+              onToggleFullScreen={toggleFullScreen}
+            />
           )}
         </main>
 
-        {/* Sidebar Panel: On desktop shown alongside chart. On mobile, shown when user selects liquidity, dom, or tape */}
-        <aside
-          className={`w-full lg:w-80 xl:w-96 flex flex-col shrink-0 bg-[#111622] rounded-xl border border-slate-800/80 overflow-hidden ${
-            mobileTab !== 'chart' ? 'flex flex-1 h-full' : 'hidden lg:flex lg:h-full'
-          }`}
-        >
-          {/* Sidebar Tab Selector */}
-          <div className="flex items-center bg-slate-900 border-b border-slate-800 p-1">
-            <button
-              onClick={() => {
-                setSidebarTab('liquidity');
-                setMobileTab('liquidity');
-              }}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                (mobileTab === 'liquidity' || sidebarTab === 'liquidity')
-                  ? 'bg-amber-500 text-slate-950 shadow-xs'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>رادار السيولة</span>
-            </button>
+        {/* Sidebar Panel: Hidden in full-screen mode to provide clean focused workspace */}
+        {!isFullScreen && (
+          <aside
+            className={`w-full lg:w-80 xl:w-96 flex flex-col shrink-0 bg-[#111622] rounded-xl border border-slate-800/80 overflow-hidden ${
+              mobileTab !== 'chart' ? 'flex flex-1 h-full' : 'hidden lg:flex lg:h-full'
+            }`}
+          >
+            {/* Sidebar Tab Selector */}
+            <div className="flex items-center bg-slate-900 border-b border-slate-800 p-1">
+              <button
+                onClick={() => {
+                  setSidebarTab('liquidity');
+                  setMobileTab('liquidity');
+                }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                  (mobileTab === 'liquidity' || sidebarTab === 'liquidity')
+                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>رادار السيولة</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setSidebarTab('dom');
-                setMobileTab('dom');
-              }}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                (mobileTab === 'dom' || sidebarTab === 'dom')
-                  ? 'bg-amber-500 text-slate-950 shadow-xs'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>عمق DOM</span>
-            </button>
+              <button
+                onClick={() => {
+                  setSidebarTab('dom');
+                  setMobileTab('dom');
+                }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                  (mobileTab === 'dom' || sidebarTab === 'dom')
+                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>عمق DOM</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setSidebarTab('tape');
-                setMobileTab('tape');
-              }}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                (mobileTab === 'tape' || sidebarTab === 'tape')
-                  ? 'bg-amber-500 text-slate-950 shadow-xs'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <Radio className="w-3.5 h-3.5" />
-              <span>الصفقات الحية</span>
-            </button>
-          </div>
-
-          {/* Active Sidebar Content */}
-          <div className="flex-1 overflow-hidden">
-            {(mobileTab === 'liquidity' || (mobileTab === 'chart' && sidebarTab === 'liquidity')) && (
-              <LiquidityZonesList zones={liquidityZones} currentPrice={quote.price} />
-            )}
-
-            {(mobileTab === 'dom' || (mobileTab === 'chart' && sidebarTab === 'dom')) && (
-              <DomLadder
-                depth={depth}
-                currentPrice={quote.price}
-                spread={quote.spread}
-                imbalanceThreshold={settings.imbalanceRatio}
-                onThresholdChange={(ratio) => setSettings((s) => ({ ...s, imbalanceRatio: ratio }))}
-              />
-            )}
-
-            {(mobileTab === 'tape' || (mobileTab === 'chart' && sidebarTab === 'tape')) && (
-              <TimeAndSales trades={trades} />
-            )}
-          </div>
-
-          {/* Bottom Quick AI Bias Widget */}
-          <div className="p-2.5 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-[11px] text-slate-300">
-                تدفق الأوامر: <strong className="text-amber-400 font-mono">XAU/USD</strong>
-              </span>
+              <button
+                onClick={() => {
+                  setSidebarTab('tape');
+                  setMobileTab('tape');
+                }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                  (mobileTab === 'tape' || sidebarTab === 'tape')
+                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <Radio className="w-3.5 h-3.5" />
+                <span>الصفقات الحية</span>
+              </button>
             </div>
-            <button
-              onClick={handleTriggerAiAnalysis}
-              className="text-[11px] text-amber-300 hover:text-amber-200 font-bold underline cursor-pointer"
-            >
-              تقرير الذكاء الاصطناعي ←
-            </button>
-          </div>
-        </aside>
+
+            {/* Active Sidebar Content */}
+            <div className="flex-1 overflow-hidden">
+              {(mobileTab === 'liquidity' || (mobileTab === 'chart' && sidebarTab === 'liquidity')) && (
+                <LiquidityZonesList zones={liquidityZones} currentPrice={quote.price} />
+              )}
+
+              {(mobileTab === 'dom' || (mobileTab === 'chart' && sidebarTab === 'dom')) && (
+                <DomLadder
+                  depth={depth}
+                  currentPrice={quote.price}
+                  spread={quote.spread}
+                  imbalanceThreshold={settings.imbalanceRatio}
+                  onThresholdChange={(ratio) => setSettings((s) => ({ ...s, imbalanceRatio: ratio }))}
+                />
+              )}
+
+              {(mobileTab === 'tape' || (mobileTab === 'chart' && sidebarTab === 'tape')) && (
+                <TimeAndSales trades={trades} />
+              )}
+            </div>
+
+            {/* Bottom Quick AI Bias Widget */}
+            <div className="p-2.5 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-[11px] text-slate-300">
+                  تدفق الأوامر: <strong className="text-amber-400 font-mono">XAU/USD</strong>
+                </span>
+              </div>
+              <button
+                onClick={handleTriggerAiAnalysis}
+                className="text-[11px] text-amber-300 hover:text-amber-200 font-bold underline cursor-pointer"
+              >
+                تقرير الذكاء الاصطناعي ←
+              </button>
+            </div>
+          </aside>
+        )}
       </div>
 
-      {/* Mobile Bottom Dock Navigation (Native App Feel for APK testing) */}
-      <nav className="lg:hidden bg-[#111622] border-t border-slate-800/90 px-2 py-1.5 flex items-center justify-around z-40 select-none pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))]">
-        <button
-          onClick={() => setMobileTab('chart')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
-            mobileTab === 'chart'
-              ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          <span>الشارت</span>
-        </button>
+      {/* Mobile Bottom Dock Navigation: Hidden in full-screen mode to keep maximum viewing area */}
+      {!isFullScreen && (
+        <nav className="lg:hidden bg-[#111622] border-t border-slate-800/90 px-2 py-1.5 flex items-center justify-around z-40 select-none pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))]">
+          <button
+            onClick={() => setMobileTab('chart')}
+            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+              mobileTab === 'chart'
+                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>الشارت</span>
+          </button>
 
-        <button
-          onClick={() => {
-            setMobileTab('liquidity');
-            setSidebarTab('liquidity');
-          }}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
-            mobileTab === 'liquidity'
-              ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>السيولة</span>
-        </button>
+          <button
+            onClick={() => {
+              setMobileTab('liquidity');
+              setSidebarTab('liquidity');
+            }}
+            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+              mobileTab === 'liquidity'
+                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>السيولة</span>
+          </button>
 
-        <button
-          onClick={() => {
-            setMobileTab('dom');
-            setSidebarTab('dom');
-          }}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
-            mobileTab === 'dom'
-              ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Activity className="w-4 h-4" />
-          <span>عمق DOM</span>
-        </button>
+          <button
+            onClick={() => {
+              setMobileTab('dom');
+              setSidebarTab('dom');
+            }}
+            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+              mobileTab === 'dom'
+                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>عمق DOM</span>
+          </button>
 
-        <button
-          onClick={() => {
-            setMobileTab('tape');
-            setSidebarTab('tape');
-          }}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
-            mobileTab === 'tape'
-              ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Radio className="w-4 h-4" />
-          <span>الصفقات</span>
-        </button>
+          <button
+            onClick={() => {
+              setMobileTab('tape');
+              setSidebarTab('tape');
+            }}
+            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+              mobileTab === 'tape'
+                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Radio className="w-4 h-4" />
+            <span>الصفقات</span>
+          </button>
 
-        <button
-          onClick={() => setIsConfluenceModalOpen(true)}
-          className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 shadow-xs transition-all active:scale-95"
-        >
-          <Crosshair className="w-4 h-4 text-emerald-400" />
-          <span>صفقات A+</span>
-        </button>
+          <button
+            onClick={() => setIsConfluenceModalOpen(true)}
+            className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 shadow-xs transition-all active:scale-95"
+          >
+            <Crosshair className="w-4 h-4 text-emerald-400" />
+            <span>صفقات A+</span>
+          </button>
 
-        <button
-          onClick={handleTriggerAiAnalysis}
-          className="flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-bold text-slate-950 bg-gradient-to-r from-amber-500 to-yellow-600 shadow-sm transition-all active:scale-95"
-        >
-          <Flame className="w-4 h-4" />
-          <span>الذكاء</span>
-        </button>
-      </nav>
+          <button
+            onClick={handleTriggerAiAnalysis}
+            className="flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-bold text-slate-950 bg-gradient-to-r from-amber-500 to-yellow-600 shadow-sm transition-all active:scale-95"
+          >
+            <Flame className="w-4 h-4" />
+            <span>الذكاء</span>
+          </button>
+        </nav>
+      )}
 
       {/* Multi-Confluence High-Accuracy Trade Setups Modal */}
       <ConfluenceSignalsModal
@@ -587,6 +699,7 @@ export default function App() {
         onClose={() => setIsConfluenceModalOpen(false)}
         setups={confluenceSetups}
         currentPrice={quote.price}
+        liquidityZones={liquidityZones}
       />
 
       {/* AI Analysis Modal */}

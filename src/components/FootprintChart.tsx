@@ -7,6 +7,8 @@ interface FootprintChartProps {
   currentPrice: number;
   liquidityZones: LiquidityZone[];
   settings: TerminalSettings;
+  isFullScreen?: boolean;
+  onToggleFullScreen?: () => void;
 }
 
 export const FootprintChart: React.FC<FootprintChartProps> = ({
@@ -14,6 +16,8 @@ export const FootprintChart: React.FC<FootprintChartProps> = ({
   currentPrice,
   liquidityZones,
   settings,
+  isFullScreen = false,
+  onToggleFullScreen,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -447,6 +451,27 @@ export const FootprintChart: React.FC<FootprintChartProps> = ({
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
+
+          {onToggleFullScreen && (
+            <>
+              <span className="w-px h-3.5 bg-slate-700 mx-0.5" />
+              <button
+                onClick={onToggleFullScreen}
+                className={`p-1 rounded transition-all cursor-pointer ${
+                  isFullScreen
+                    ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                }`}
+                title={isFullScreen ? 'إنهاء ملء الشاشة' : 'ملء الشاشة لمساحة الشارت'}
+              >
+                {isFullScreen ? (
+                  <Minimize2 className="w-3.5 h-3.5" />
+                ) : (
+                  <Maximize2 className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

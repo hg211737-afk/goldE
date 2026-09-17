@@ -222,8 +222,26 @@ export function detectLiquidityZones(currentPrice: number, bars: FootprintBar[])
   return zones;
 }
 
+// Remote Cloud Run production backend URL for Standalone Android APK mode
+const REMOTE_BACKEND_URL = 'https://ais-pre-5naqrfugh3oru32q7ivu3x-547476563021.europe-west3.run.app';
+
+// Unblocked Binance Vision & Mirror API endpoints
+const BINANCE_REST_ENDPOINTS = [
+  'https://data-api.binance.vision',
+  'https://api1.binance.com',
+  'https://api2.binance.com',
+  'https://api3.binance.com',
+  'https://api.binance.com',
+];
+
+const BINANCE_WS_ENDPOINTS = [
+  'wss://data-stream.binance.vision/stream?streams=paxgusdt@ticker/paxgusdt@trade/paxgusdt@depth20@100ms',
+  'wss://stream.binance.com:9443/stream?streams=paxgusdt@ticker/paxgusdt@trade/paxgusdt@depth20@100ms',
+];
+
 /**
  * Connects to live Binance WebSocket feeds for PAXG (Physical Gold 1:1)
+ * Automatically cycles through unblocked developer endpoints (data-stream.binance.vision)
  */
 export function setupMarketSocket(
   onQuote: (quote: Partial<GoldQuote>) => void,
@@ -232,14 +250,17 @@ export function setupMarketSocket(
 ) {
   let ws: WebSocket | null = null;
   let isClosed = false;
+  let wsIndex = 0;
 
   const connect = () => {
+    if (isClosed) return;
+
     try {
-      // Combined stream for PAXGUSDT: ticker, depth, trade
-      ws = new WebSocket('wss://stream.binance.com:9443/stream?streams=paxgusdt@ticker/paxgusdt@trade/paxgusdt@depth20@100ms');
+      const url = BINANCE_WS_ENDPOINTS[wsIndex % BINANCE_WS_ENDPOINTS.length];
+      ws = new WebSocket(url);
 
       ws.onopen = () => {
-        // connected
+        // Successfully connected to WebSocket
       };
 
       ws.onmessage = (event) => {
@@ -247,6 +268,8 @@ export function setupMarketSocket(
           const payload = JSON.parse(event.data);
           const stream = payload.stream;
           const data = payload.data;
+
+          if (!data) return;
 
           if (stream.includes('@ticker')) {
             const price = parseFloat(data.c);
@@ -269,7 +292,7 @@ export function setupMarketSocket(
               ask,
               spread: Number((ask - bid).toFixed(2)),
               timestamp: data.E,
-              source: 'Binance WebSocket Live',
+              source: 'Binance Live Stream',
             });
           } else if (stream.includes('@trade')) {
             const price = parseFloat(data.p);
@@ -316,23 +339,26 @@ export function setupMarketSocket(
 
             onDepth({ bids, asks, maxQty });
           }
-        } catch (e) {
+        } catch {
           // ignore parsing glitch
         }
       };
 
       ws.onerror = () => {
-        // ws error
+        // Switch to alternative unblocked mirror on error
+        wsIndex++;
       };
 
       ws.onclose = () => {
         if (!isClosed) {
-          setTimeout(connect, 3000); // Reconnect after 3s
+          wsIndex++;
+          setTimeout(connect, 2500); // Reconnect with next endpoint
         }
       };
-    } catch (e) {
+    } catch {
       if (!isClosed) {
-        setTimeout(connect, 4000);
+        wsIndex++;
+        setTimeout(connect, 3000);
       }
     }
   };
@@ -348,87 +374,122 @@ export function setupMarketSocket(
 /**
  * Direct public Binance REST fallback for APK / Standalone environments
  * when no Express backend is available locally on the device.
+ * Tests multiple unblocked mirrors including data-api.binance.vision
  */
 export async function fetchDirectBinanceSnapshot(interval: string = '5m') {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4500);
+  for (const base of BINANCE_REST_ENDPOINTS) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
 
-    const [tickerRes, depthRes, klinesRes, tradesRes] = await Promise.allSettled([
-      fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT', { signal: controller.signal }),
-      fetch('https://api.binance.com/api/v3/depth?symbol=PAXGUSDT&limit=30', { signal: controller.signal }),
-      fetch(`https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=${interval}&limit=50`, { signal: controller.signal }),
-      fetch('https://api.binance.com/api/v3/trades?symbol=PAXGUSDT&limit=30', { signal: controller.signal }),
-    ]);
+      const [tickerRes, depthRes, klinesRes, tradesRes] = await Promise.allSettled([
+        fetch(`${base}/api/v3/ticker/24hr?symbol=PAXGUSDT`, { signal: controller.signal }),
+        fetch(`${base}/api/v3/depth?symbol=PAXGUSDT&limit=30`, { signal: controller.signal }),
+        fetch(`${base}/api/v3/klines?symbol=PAXGUSDT&interval=${interval}&limit=50`, { signal: controller.signal }),
+        fetch(`${base}/api/v3/trades?symbol=PAXGUSDT&limit=30`, { signal: controller.signal }),
+      ]);
 
-    clearTimeout(timeout);
+      clearTimeout(timeout);
 
-    let price = 2742.50;
-    let quoteData: any = null;
+      let price = 2742.50;
+      let quoteData: any = null;
 
-    if (tickerRes.status === 'fulfilled' && tickerRes.value.ok) {
-      const ticker = await tickerRes.value.json();
-      price = parseFloat(ticker.lastPrice);
-      quoteData = {
-        price,
-        bid: parseFloat(ticker.bidPrice) || price - 0.25,
-        ask: parseFloat(ticker.askPrice) || price + 0.25,
-        spread: Number(((parseFloat(ticker.askPrice) || price + 0.25) - (parseFloat(ticker.bidPrice) || price - 0.25)).toFixed(2)),
-        high24h: parseFloat(ticker.highPrice),
-        low24h: parseFloat(ticker.lowPrice),
-        change24h: parseFloat(ticker.priceChange),
-        changePercent24h: parseFloat(ticker.priceChangePercent),
-        volume24h: parseFloat(ticker.volume),
-        timestamp: Date.now(),
+      if (tickerRes.status === 'fulfilled' && tickerRes.value.ok) {
+        const ticker = await tickerRes.value.json();
+        price = parseFloat(ticker.lastPrice);
+        quoteData = {
+          price,
+          bid: parseFloat(ticker.bidPrice) || price - 0.25,
+          ask: parseFloat(ticker.askPrice) || price + 0.25,
+          spread: Number(((parseFloat(ticker.askPrice) || price + 0.25) - (parseFloat(ticker.bidPrice) || price - 0.25)).toFixed(2)),
+          high24h: parseFloat(ticker.highPrice),
+          low24h: parseFloat(ticker.lowPrice),
+          change24h: parseFloat(ticker.priceChange),
+          changePercent24h: parseFloat(ticker.priceChangePercent),
+          volume24h: parseFloat(ticker.volume),
+          timestamp: Date.now(),
+          source: `Direct Binance (${base.includes('vision') ? 'Vision Mirror' : 'REST'})`,
+        };
+      } else {
+        continue; // Try next mirror if ticker failed
+      }
+
+      let depthData: any = null;
+      if (depthRes.status === 'fulfilled' && depthRes.value.ok) {
+        const rawDepth = await depthRes.value.json();
+        if (rawDepth.bids && rawDepth.asks) {
+          depthData = {
+            bids: rawDepth.bids.map((b: string[]) => [parseFloat(b[0]), parseFloat(b[1])]),
+            asks: rawDepth.asks.map((a: string[]) => [parseFloat(a[0]), parseFloat(a[1])]),
+          };
+        }
+      }
+
+      let tradesData: any[] = [];
+      if (tradesRes.status === 'fulfilled' && tradesRes.value.ok) {
+        const rawTrades = await tradesRes.value.json();
+        tradesData = rawTrades.map((t: any) => ({
+          id: String(t.id),
+          price: parseFloat(t.price),
+          qty: parseFloat(t.qty),
+          isBuyerMaker: t.isBuyerMaker,
+          time: t.time,
+        }));
+      }
+
+      let klinesData: any[] = [];
+      if (klinesRes.status === 'fulfilled' && klinesRes.value.ok) {
+        const rawKlines = await klinesRes.value.json();
+        klinesData = rawKlines.map((k: any) => ({
+          time: k[0],
+          open: parseFloat(k[1]),
+          high: parseFloat(k[2]),
+          low: parseFloat(k[3]),
+          close: parseFloat(k[4]),
+          volume: parseFloat(k[5]),
+          takerBuyBaseVolume: parseFloat(k[9]),
+        }));
+      }
+
+      return {
+        ...(quoteData || { price }),
+        depth: depthData,
+        trades: tradesData,
+        klines: klinesData,
       };
+    } catch {
+      // Continue to next mirror endpoint
     }
+  }
 
-    let depthData: any = null;
-    if (depthRes.status === 'fulfilled' && depthRes.value.ok) {
-      const rawDepth = await depthRes.value.json();
-      if (rawDepth.bids && rawDepth.asks) {
-        depthData = {
-          bids: rawDepth.bids.map((b: string[]) => [parseFloat(b[0]), parseFloat(b[1])]),
-          asks: rawDepth.asks.map((a: string[]) => [parseFloat(a[0]), parseFloat(a[1])]),
+  // Fallback to CoinGecko PAX Gold API if all Binance mirrors are blocked
+  try {
+    const cgRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true');
+    if (cgRes.ok) {
+      const cgData = await cgRes.json();
+      const p = cgData?.['pax-gold']?.usd;
+      if (p) {
+        return {
+          price: p,
+          bid: Number((p - 0.25).toFixed(2)),
+          ask: Number((p + 0.25).toFixed(2)),
+          spread: 0.5,
+          high24h: Number((p + 12).toFixed(2)),
+          low24h: Number((p - 14).toFixed(2)),
+          change24h: Number((p * ((cgData?.['pax-gold']?.usd_24h_change || 0) / 100)).toFixed(2)),
+          changePercent24h: cgData?.['pax-gold']?.usd_24h_change || 0,
+          volume24h: cgData?.['pax-gold']?.usd_24h_vol || 5000,
+          timestamp: Date.now(),
+          source: 'CoinGecko Gold Feed',
         };
       }
     }
-
-    let tradesData: any[] = [];
-    if (tradesRes.status === 'fulfilled' && tradesRes.value.ok) {
-      const rawTrades = await tradesRes.value.json();
-      tradesData = rawTrades.map((t: any) => ({
-        id: String(t.id),
-        price: parseFloat(t.price),
-        qty: parseFloat(t.qty),
-        isBuyerMaker: t.isBuyerMaker,
-        time: t.time,
-      }));
-    }
-
-    let klinesData: any[] = [];
-    if (klinesRes.status === 'fulfilled' && klinesRes.value.ok) {
-      const rawKlines = await klinesRes.value.json();
-      klinesData = rawKlines.map((k: any) => ({
-        time: k[0],
-        open: parseFloat(k[1]),
-        high: parseFloat(k[2]),
-        low: parseFloat(k[3]),
-        close: parseFloat(k[4]),
-        volume: parseFloat(k[5]),
-        takerBuyBaseVolume: parseFloat(k[9]),
-      }));
-    }
-
-    return {
-      ...(quoteData || { price }),
-      depth: depthData,
-      trades: tradesData,
-      klines: klinesData,
-    };
-  } catch (err) {
-    console.warn('Direct Binance fetch fallback warning:', err);
-    return null;
+  } catch {
+    // ignore
   }
+
+  return null;
 }
+
+export { REMOTE_BACKEND_URL };
 

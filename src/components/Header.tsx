@@ -12,6 +12,9 @@ import {
   Radio,
   Clock,
   ShieldAlert,
+  RefreshCw,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -23,8 +26,11 @@ interface HeaderProps {
   onOpenAiModal: () => void;
   onOpenSettingsModal: () => void;
   onOpenConfluenceModal?: () => void;
+  onRefresh?: () => void;
   isAiLoading: boolean;
   activeLiquidityCount: number;
+  isFullScreen?: boolean;
+  onToggleFullScreen?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,11 +42,34 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAiModal,
   onOpenSettingsModal,
   onOpenConfluenceModal,
+  onRefresh,
   isAiLoading,
   activeLiquidityCount,
+  isFullScreen = false,
+  onToggleFullScreen,
 }) => {
   const [prevPrice, setPrevPrice] = useState(quote.price);
   const [tickDirection, setTickDirection] = useState<'up' | 'down' | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (quote.price > prevPrice) {
+      setTickDirection('up');
+    } else if (quote.price < prevPrice) {
+      setTickDirection('down');
+    }
+    const timer = setTimeout(() => setTickDirection(null), 800);
+    setPrevPrice(quote.price);
+    return () => clearTimeout(timer);
+  }, [quote.price]);
+
+  const handleManualRefresh = () => {
+    if (onRefresh) {
+      setIsRefreshing(true);
+      onRefresh();
+      setTimeout(() => setIsRefreshing(false), 1000);
+    }
+  };
 
   useEffect(() => {
     if (quote.price > prevPrice) {
@@ -73,9 +102,29 @@ export const Header: React.FC<HeaderProps> = ({
                     الذهب الفوري
                   </span>
                 </h1>
-                <div className="flex items-center gap-1 text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span className="hidden sm:inline">بث حي فوري</span>
+                <div className="flex items-center gap-1.5">
+                  <div
+                    title={quote.source || 'بث تدفق الأوامر الحي'}
+                    className="flex items-center gap-1 text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="hidden sm:inline">بث حي فوري</span>
+                    {quote.source && (
+                      <span className="hidden md:inline text-[9px] text-slate-400 border-r border-slate-700 pr-1.5 mr-1">
+                        {quote.source.includes('Binance') ? 'Binance' : quote.source.includes('CoinGecko') ? 'CoinGecko' : 'سحابي'}
+                      </span>
+                    )}
+                  </div>
+                  {onRefresh && (
+                    <button
+                      onClick={handleManualRefresh}
+                      disabled={isRefreshing}
+                      title="تحديث البيانات وإعادة الاتصال بالخادم"
+                      className="p-1 rounded-md text-slate-400 hover:text-amber-400 hover:bg-slate-800/80 transition-colors"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-amber-400' : ''}`} />
+                    </button>
+                  )}
                 </div>
               </div>
               <p className="text-[11px] text-slate-400">Order Flow & Liquidity Terminal</p>
@@ -279,6 +328,31 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <SlidersHorizontal className="w-4 h-4" />
           </button>
+
+          {/* Full Screen Chart Workspace Toggle */}
+          {onToggleFullScreen && (
+            <button
+              onClick={onToggleFullScreen}
+              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 ${
+                isFullScreen
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-[0_0_12px_rgba(245,158,11,0.35)]'
+                  : 'bg-slate-900/90 border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-amber-400'
+              }`}
+              title={isFullScreen ? 'إلغاء وضع ملء الشاشة واستعادة اللوحات (Esc)' : 'وضع ملء الشاشة للشارت (إخفاء القوائم والأشرطة)'}
+            >
+              {isFullScreen ? (
+                <>
+                  <Minimize2 className="w-4 h-4" />
+                  <span className="text-xs hidden md:inline font-bold">إنهاء ملء الشاشة</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-4 h-4" />
+                  <span className="text-xs hidden md:inline">ملء الشاشة</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </header>

@@ -230,3 +230,30 @@ export interface TerminalSettings {
   whaleThreshold: number;      // e.g. 5.0 lots
   heatmapIntensity: number;    // 1 to 5
 }
+
+// === 5. Mock Order Simulation Types ===
+export interface SimulatedOrder {
+  id: string;
+  symbol: string;
+  type: 'BUY_LONG' | 'SELL_SHORT';
+  orderType: 'MARKET' | 'LIMIT';
+  entryPrice: number;
+  lotSize: number;
+  stopLoss: number;
+  tp1: number;
+  tp2: number;
+  openTime: number;
+  status: 'OPEN' | 'CLOSED';
+  closePrice?: number;
+  closeTime?: number;
+  pnlUsd?: number;
+  slZoneReason?: string;
+  tpZoneReason?: string;
+}
+
+export interface SimulatedTradeStats {
+  totalTrades: number;
+  winRate: number;
+  totalPnlUsd: number;
+  activePositions: number;
+}

@@ -1,17 +1,21 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { LiquidityZone, MarketDepth } from '../types';
-import { Flame, ShieldAlert, Sparkles, AlertCircle, Eye } from 'lucide-react';
+import { Flame, ShieldAlert, Sparkles, AlertCircle, Eye, Maximize2, Minimize2 } from 'lucide-react';
 
 interface LiquidityHeatmapProps {
   currentPrice: number;
   liquidityZones: LiquidityZone[];
   depth: MarketDepth;
+  isFullScreen?: boolean;
+  onToggleFullScreen?: () => void;
 }
 
 export const LiquidityHeatmap: React.FC<LiquidityHeatmapProps> = ({
   currentPrice,
   liquidityZones,
   depth,
+  isFullScreen = false,
+  onToggleFullScreen,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [selectedZone, setSelectedZone] = useState<LiquidityZone | null>(null);
@@ -239,9 +243,33 @@ export const LiquidityHeatmap: React.FC<LiquidityHeatmapProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+          <span className="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 hidden sm:inline">
             كشف سحب السيولة (Stop Hunts Radar)
           </span>
+
+          {onToggleFullScreen && (
+            <button
+              onClick={onToggleFullScreen}
+              className={`p-1 rounded transition-all cursor-pointer flex items-center gap-1 ${
+                isFullScreen
+                  ? 'text-amber-400 bg-amber-500/20 border border-amber-500/30'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/60'
+              }`}
+              title={isFullScreen ? 'إنهاء ملء الشاشة' : 'ملء الشاشة للهيت ماب'}
+            >
+              {isFullScreen ? (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5" />
+                  <span className="text-[11px] hidden md:inline">إنهاء ملء الشاشة</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span className="text-[11px] hidden md:inline">ملء الشاشة</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
