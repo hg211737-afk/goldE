@@ -1,0 +1,6 @@
+{
+  "name": "XAU/USD Order Flow & Liquidity Terminal",
+  "description": "منصة احترافية متطورة لتحليل تدفق الأوامر (Order Flow) للذهب XAU/USD وكشف مناطق السيولة، شارت الفوت برنت (Footprint)، الخريطة الحرارية (Heatmap)، ودلتا الحجم مع بث حي ومباشر لأسعار الذهب.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
