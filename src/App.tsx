@@ -40,6 +40,7 @@ import { ConfluenceSignalsModal } from './components/ConfluenceSignalsModal';
 import { DomLadder } from './components/DomLadder';
 import { TimeAndSales } from './components/TimeAndSales';
 import { LiquidityZonesList } from './components/LiquidityZonesList';
+import { VolumeProfileSidePanel } from './components/VolumeProfileSidePanel';
 import { AiAnalysisModal } from './components/AiAnalysisModal';
 import { SettingsModal } from './components/SettingsModal';
 import {
@@ -54,6 +55,7 @@ import {
   Minimize2,
   Crosshair,
   Award,
+  BarChart2,
 } from 'lucide-react';
 
 export default function App() {
@@ -106,8 +108,8 @@ export default function App() {
   const [bars, setBars] = useState<FootprintBar[]>([]);
   const [liquidityZones, setLiquidityZones] = useState<LiquidityZone[]>([]);
 
-  // Sidebar Tabs: 'dom' | 'tape' | 'liquidity'
-  const [sidebarTab, setSidebarTab] = useState<'dom' | 'tape' | 'liquidity'>('liquidity');
+  // Sidebar Tabs: 'dom' | 'tape' | 'liquidity' | 'profile'
+  const [sidebarTab, setSidebarTab] = useState<'dom' | 'tape' | 'liquidity' | 'profile'>('profile');
 
   // Terminal Settings
   const [settings, setSettings] = useState<TerminalSettings>({
@@ -158,7 +160,7 @@ export default function App() {
   );
 
   // Mobile Bottom Navigation Tab State (for Phone/APK view)
-  const [mobileTab, setMobileTab] = useState<'chart' | 'liquidity' | 'dom' | 'tape' | 'confluence'>('chart');
+  const [mobileTab, setMobileTab] = useState<'chart' | 'liquidity' | 'profile' | 'dom' | 'tape' | 'confluence'>('chart');
 
   // Liquidity Sweep Alert Banner
   const [activeAlert, setActiveAlert] = useState<string | null>(null);
@@ -531,17 +533,33 @@ export default function App() {
             <div className="flex items-center bg-slate-900 border-b border-slate-800 p-1">
               <button
                 onClick={() => {
+                  setSidebarTab('profile');
+                  setMobileTab('profile');
+                }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${
+                  (mobileTab === 'profile' || sidebarTab === 'profile')
+                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+                title="بروفايل الحجم - كشف عقد الحجم العالي HVNs ومنطقة القيمة"
+              >
+                <BarChart2 className="w-3.5 h-3.5" />
+                <span>بروفايل الحجم</span>
+              </button>
+
+              <button
+                onClick={() => {
                   setSidebarTab('liquidity');
                   setMobileTab('liquidity');
                 }}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${
                   (mobileTab === 'liquidity' || sidebarTab === 'liquidity')
                     ? 'bg-amber-500 text-slate-950 shadow-xs'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>رادار السيولة</span>
+                <span>السيولة</span>
               </button>
 
               <button
@@ -549,14 +567,14 @@ export default function App() {
                   setSidebarTab('dom');
                   setMobileTab('dom');
                 }}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${
                   (mobileTab === 'dom' || sidebarTab === 'dom')
                     ? 'bg-amber-500 text-slate-950 shadow-xs'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>عمق DOM</span>
+                <span>DOM</span>
               </button>
 
               <button
@@ -564,19 +582,27 @@ export default function App() {
                   setSidebarTab('tape');
                   setMobileTab('tape');
                 }}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${
                   (mobileTab === 'tape' || sidebarTab === 'tape')
                     ? 'bg-amber-500 text-slate-950 shadow-xs'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
               >
                 <Radio className="w-3.5 h-3.5" />
-                <span>الصفقات الحية</span>
+                <span>الصفقات</span>
               </button>
             </div>
 
             {/* Active Sidebar Content */}
             <div className="flex-1 overflow-hidden">
+              {(mobileTab === 'profile' || (mobileTab === 'chart' && sidebarTab === 'profile')) && (
+                <VolumeProfileSidePanel
+                  bars={bars}
+                  currentPrice={quote.price}
+                  tickSize={settings.tickSize}
+                />
+              )}
+
               {(mobileTab === 'liquidity' || (mobileTab === 'chart' && sidebarTab === 'liquidity')) && (
                 <LiquidityZonesList zones={liquidityZones} currentPrice={quote.price} />
               )}
@@ -620,7 +646,7 @@ export default function App() {
         <nav className="lg:hidden bg-[#111622] border-t border-slate-800/90 px-2 py-1.5 flex items-center justify-around z-40 select-none pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))]">
           <button
             onClick={() => setMobileTab('chart')}
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-semibold transition-all ${
               mobileTab === 'chart'
                 ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
                 : 'text-slate-400 hover:text-slate-200'
@@ -632,10 +658,25 @@ export default function App() {
 
           <button
             onClick={() => {
+              setMobileTab('profile');
+              setSidebarTab('profile');
+            }}
+            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-semibold transition-all ${
+              mobileTab === 'profile'
+                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <BarChart2 className="w-4 h-4" />
+            <span>بروفايل</span>
+          </button>
+
+          <button
+            onClick={() => {
               setMobileTab('liquidity');
               setSidebarTab('liquidity');
             }}
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-semibold transition-all ${
               mobileTab === 'liquidity'
                 ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
                 : 'text-slate-400 hover:text-slate-200'
@@ -650,7 +691,7 @@ export default function App() {
               setMobileTab('dom');
               setSidebarTab('dom');
             }}
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-semibold transition-all ${
               mobileTab === 'dom'
                 ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
                 : 'text-slate-400 hover:text-slate-200'
@@ -665,7 +706,7 @@ export default function App() {
               setMobileTab('tape');
               setSidebarTab('tape');
             }}
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-semibold transition-all ${
+            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-semibold transition-all ${
               mobileTab === 'tape'
                 ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
                 : 'text-slate-400 hover:text-slate-200'
@@ -677,7 +718,7 @@ export default function App() {
 
           <button
             onClick={() => setIsConfluenceModalOpen(true)}
-            className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 shadow-xs transition-all active:scale-95"
+            className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg text-[10px] font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 shadow-xs transition-all active:scale-95"
           >
             <Crosshair className="w-4 h-4 text-emerald-400" />
             <span>صفقات A+</span>
@@ -685,10 +726,10 @@ export default function App() {
 
           <button
             onClick={handleTriggerAiAnalysis}
-            className="flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-[10px] font-bold text-slate-950 bg-gradient-to-r from-amber-500 to-yellow-600 shadow-sm transition-all active:scale-95"
+            className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-bold text-slate-950 bg-gradient-to-r from-amber-500 to-yellow-600 shadow-sm transition-all active:scale-95"
           >
             <Flame className="w-4 h-4" />
-            <span>الذكاء</span>
+            <span>السيناريو</span>
           </button>
         </nav>
       )}

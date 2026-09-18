@@ -310,14 +310,15 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* AI Institutional Analysis Trigger */}
+          {/* AI Institutional Scenario & Analysis Trigger */}
           <button
             onClick={onOpenAiModal}
             disabled={isAiLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-bold text-xs shadow-[0_0_18px_rgba(245,158,11,0.35)] transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            title="كشف السيناريو والتحليل المؤسسي الفائق بأحدث تقنيات الذكاء الاصطناعي"
           >
             <Cpu className={`w-4 h-4 ${isAiLoading ? 'animate-spin' : ''}`} />
-            <span>تحليل الذكاء المؤسسي</span>
+            <span>كشف السيناريو والذكاء</span>
           </button>
 
           {/* Settings Trigger */}

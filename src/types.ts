@@ -200,6 +200,18 @@ export interface ConfluenceTradeSetup {
   timestamp: number;
 }
 
+export interface MarketScenario {
+  name: string;
+  nameAr: string;
+  probability: number; // e.g. 75%
+  type: 'PRIMARY' | 'ALTERNATIVE';
+  thesis: string;
+  triggerCondition: string; // شرط التفعيل اللحظي
+  invalidationLevel: string; // مستوى الإلغاء ونفي السيناريو
+  targetPathway: string[]; // مسار السعر المتوقع خطوة بخطوة
+  recommendedAction: string;
+}
+
 export interface AIAnalysisResult {
   bias: string;
   confidenceScore: number;
@@ -209,6 +221,11 @@ export interface AIAnalysisResult {
   futuresFlowInsight?: string;
   optionsFlowInsight?: string;
   orderClustersInsight?: string;
+  volumeProfileInsight?: string;
+  // Advanced Scenario Detection:
+  primaryScenario?: MarketScenario;
+  alternativeScenario?: MarketScenario;
+  scenarioAnalysisDetails?: string;
   setup: {
     type: string;
     entryZone: string;
@@ -257,3 +274,35 @@ export interface SimulatedTradeStats {
   totalPnlUsd: number;
   activePositions: number;
 }
+
+// === 6. Volume Profile (Fixed Range) Types ===
+export interface VolumeProfileLevel {
+  price: number;
+  volume: number;
+  bidVolume: number;
+  askVolume: number;
+  delta: number;
+  percentage: number;
+  isPOC: boolean;      // Point of Control (Highest Volume Node)
+  isVAH: boolean;      // Value Area High boundary
+  isVAL: boolean;      // Value Area Low boundary
+  isInValueArea: boolean; // Inside 70% Value Area
+  nodeType: 'HVN' | 'LVN' | 'NORMAL'; // High Volume Node vs Low Volume Node
+}
+
+export interface VolumeProfileData {
+  rangeType: 'SESSION' | 'FIXED_VISIBLE' | 'LAST_20' | 'LAST_10';
+  pocPrice: number;
+  pocVolume: number;
+  vahPrice: number;    // Value Area High (70% value area)
+  valPrice: number;    // Value Area Low
+  totalVolume: number;
+  totalDelta: number;
+  totalBuyVolume: number;
+  totalSellVolume: number;
+  levels: VolumeProfileLevel[];
+  hvnNodes: VolumeProfileLevel[]; // High Volume Nodes (Support/Resistance levels)
+  lvnNodes: VolumeProfileLevel[]; // Low Volume Nodes (Fast travel / Slippage zones)
+  summaryText: string;
+}
+
