@@ -27,6 +27,7 @@ interface HeaderProps {
   onOpenAiModal: () => void;
   onOpenSettingsModal: () => void;
   onOpenConfluenceModal?: () => void;
+  onOpenMarketSessionsModal?: () => void;
   onRefresh?: () => void;
   isAiLoading: boolean;
   activeLiquidityCount: number;
@@ -43,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAiModal,
   onOpenSettingsModal,
   onOpenConfluenceModal,
+  onOpenMarketSessionsModal,
   onRefresh,
   isAiLoading,
   activeLiquidityCount,
@@ -324,6 +326,18 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* In-App PWA Install Prompt Button */}
           <PWAInstallButton variant="header" />
+
+          {/* Market Sessions & Liquidity Button */}
+          {onOpenMarketSessionsModal && (
+            <button
+              onClick={onOpenMarketSessionsModal}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white font-medium text-xs transition-all cursor-pointer"
+              title="أوقات الجلسات العالمية ومستويات السيولة وساعات افتتاح السوق"
+            >
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden lg:inline">الجلسات والسيولة</span>
+            </button>
+          )}
 
           {/* Settings Trigger */}
           <button

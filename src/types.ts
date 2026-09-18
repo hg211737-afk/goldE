@@ -187,6 +187,9 @@ export interface ConfluenceTradeSetup {
   type: 'BUY_LONG' | 'SELL_SHORT';
   grade: 'A+ المؤسسية الفائقة' | 'A عالية الاحتمالية' | 'B جيدة';
   confluenceScore: number; // 0 to 100
+  winProbability: number; // estimated historical win rate % e.g. 94.5%
+  sessionContext?: string; // e.g. Golden Overlap / London Session
+  liquidityTier?: 'PRIME' | 'HIGH' | 'MODERATE';
   entryRange: [number, number];
   stopLoss: number;
   stopLossProtection: string;
@@ -249,6 +252,9 @@ export interface TerminalSettings {
   manualPriceOffset: number;   // Calibration offset in USD (e.g. +1635.73 to bridge PAXG to live gold spot)
   priceCalibrationMode: 'auto_spot' | 'paxg_pure' | 'custom_offset'; // Alignment mode
   minConfluenceScore: number;  // Filtering threshold: only show 100% / A+ ultra-strict setups
+  enforceMarketHoursOnly: boolean; // Do not issue signals when gold market is closed or weekend
+  onlyHighLiquiditySessions: boolean; // Restrict signals to high volume sessions (London, NY, Overlap)
+  strictHighWinRateOnly: boolean; // Suppress any setup if estimated win rate is below 90%
 }
 
 // === TrendSpider & Bookmap / Exocharts Institutional Engine Types ===

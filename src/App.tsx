@@ -43,6 +43,8 @@ import { LiquidityZonesList } from './components/LiquidityZonesList';
 import { VolumeProfileSidePanel } from './components/VolumeProfileSidePanel';
 import { AiAnalysisModal } from './components/AiAnalysisModal';
 import { SettingsModal } from './components/SettingsModal';
+import { MarketSessionBar } from './components/MarketSessionBar';
+import { MarketSessionsModal } from './components/MarketSessionsModal';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import {
@@ -130,6 +132,9 @@ export default function App() {
           manualPriceOffset: 0,
           priceCalibrationMode: 'auto_spot',
           minConfluenceScore: 90,
+          enforceMarketHoursOnly: true,
+          onlyHighLiquiditySessions: false,
+          strictHighWinRateOnly: true,
           ...JSON.parse(saved),
         };
       }
@@ -148,6 +153,9 @@ export default function App() {
       manualPriceOffset: 0,
       priceCalibrationMode: 'auto_spot',
       minConfluenceScore: 90,
+      enforceMarketHoursOnly: true,
+      onlyHighLiquiditySessions: false,
+      strictHighWinRateOnly: true,
     };
   });
 
@@ -163,11 +171,12 @@ export default function App() {
     });
   }, []);
 
-  // AI Analysis State
+  // AI Analysis & Modals State
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isConfluenceModalOpen, setIsConfluenceModalOpen] = useState(false);
+  const [isMarketSessionsModalOpen, setIsMarketSessionsModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   // Advanced Flow & Multi-Method Institutional Analytics
@@ -188,19 +197,33 @@ export default function App() {
 
   const confluenceSetups = useMemo<ConfluenceTradeSetup[]>(
     () => {
-      const raw = generateConfluenceSetups(
+      return generateConfluenceSetups(
         quote.price,
         bars,
         futuresData,
         optionsData,
         orderClusters,
-        liquidityZones
+        liquidityZones,
+        {
+          enforceMarketHours: settings.enforceMarketHoursOnly ?? true,
+          onlyHighLiquidity: settings.onlyHighLiquiditySessions ?? false,
+          minScore: settings.minConfluenceScore || 90,
+          strictWinRate: settings.strictHighWinRateOnly ?? true,
+        }
       );
-      const minScore = settings.minConfluenceScore || 90;
-      const filtered = raw.filter((s) => s.confluenceScore >= minScore);
-      return filtered.length > 0 ? filtered : raw;
     },
-    [quote.price, bars, futuresData, optionsData, orderClusters, liquidityZones, settings.minConfluenceScore]
+    [
+      quote.price,
+      bars,
+      futuresData,
+      optionsData,
+      orderClusters,
+      liquidityZones,
+      settings.enforceMarketHoursOnly,
+      settings.onlyHighLiquiditySessions,
+      settings.minConfluenceScore,
+      settings.strictHighWinRateOnly,
+    ]
   );
 
   // Mobile Bottom Navigation Tab State (for Phone/APK view)
@@ -479,12 +502,19 @@ export default function App() {
         onViewModeChange={setViewMode}
         onOpenAiModal={handleTriggerAiAnalysis}
         onOpenConfluenceModal={() => setIsConfluenceModalOpen(true)}
+        onOpenMarketSessionsModal={() => setIsMarketSessionsModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         onRefresh={fetchMarketSnapshot}
         isAiLoading={isAiLoading}
         activeLiquidityCount={liquidityZones.filter((z) => z.status === 'untested').length}
         isFullScreen={isFullScreen}
         onToggleFullScreen={toggleFullScreen}
+      />
+
+      {/* Real-time Market Sessions & Liquidity Bar */}
+      <MarketSessionBar
+        onOpenScheduleModal={() => setIsMarketSessionsModalOpen(true)}
+        strictFilterActive={settings.strictHighWinRateOnly}
       />
 
       {/* Real-time Liquidity Sweep Alert Banner */}
@@ -791,6 +821,18 @@ export default function App() {
         setups={confluenceSetups}
         currentPrice={quote.price}
         liquidityZones={liquidityZones}
+        onOpenScheduleModal={() => {
+          setIsConfluenceModalOpen(false);
+          setIsMarketSessionsModalOpen(true);
+        }}
+      />
+
+      {/* Global Gold Market Sessions & Liquidity Modal */}
+      <MarketSessionsModal
+        isOpen={isMarketSessionsModalOpen}
+        onClose={() => setIsMarketSessionsModalOpen(false)}
+        settings={settings}
+        onUpdateSettings={handleUpdateSettings}
       />
 
       {/* AI Analysis Modal */}

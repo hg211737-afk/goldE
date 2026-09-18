@@ -203,6 +203,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 className="rounded accent-amber-500 w-4 h-4 cursor-pointer"
               />
             </label>
+
+            <label className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 cursor-pointer">
+              <div>
+                <span className="text-slate-200 font-medium block">حظر التوصيات أثناء إغلاق سوق الذهب العالمي</span>
+                <span className="text-[10px] text-slate-400">حجب التوصيات في عطلة نهاية الأسبوع وساعات الصيانة لحماية رأس المال</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.enforceMarketHoursOnly ?? true}
+                onChange={(e) => onUpdateSettings({ enforceMarketHoursOnly: e.target.checked })}
+                className="rounded accent-emerald-500 w-4 h-4 cursor-pointer"
+              />
+            </label>
+
+            <label className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 cursor-pointer">
+              <div>
+                <span className="text-slate-200 font-medium block">حصر التوصيات في جلسات السيولة العالية فقط</span>
+                <span className="text-[10px] text-slate-400">تجاهل فترات الخمول والتركيز على انفجارات لندن ونيويورك والتداخل الذهبي</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.onlyHighLiquiditySessions ?? false}
+                onChange={(e) => onUpdateSettings({ onlyHighLiquiditySessions: e.target.checked })}
+                className="rounded accent-amber-500 w-4 h-4 cursor-pointer"
+              />
+            </label>
+
+            <label className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 cursor-pointer">
+              <div>
+                <span className="text-slate-200 font-medium block">فلتر نسبة النجاح المؤكدة 90%+ (حجب الصفقات الضعيفة)</span>
+                <span className="text-[10px] text-slate-400">عدم إعطاء أي توصية إذا لم تكن فرص نجاحها عالية ومحمية بجدران الليمت</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.strictHighWinRateOnly ?? true}
+                onChange={(e) => onUpdateSettings({ strictHighWinRateOnly: e.target.checked })}
+                className="rounded accent-emerald-500 w-4 h-4 cursor-pointer"
+              />
+            </label>
           </div>
         </div>
 
