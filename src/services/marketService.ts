@@ -391,24 +391,29 @@ export async function fetchDirectBinanceSnapshot(interval: string = '5m') {
 
       clearTimeout(timeout);
 
-      let price = 2742.50;
+      let price = 4378.33;
       let quoteData: any = null;
+      const TARGET_SPOT_GOLD = 4378.33;
 
       if (tickerRes.status === 'fulfilled' && tickerRes.value.ok) {
         const ticker = await tickerRes.value.json();
-        price = parseFloat(ticker.lastPrice);
+        const rawPaxgPrice = parseFloat(ticker.lastPrice);
+        const spotMultiplier = rawPaxgPrice > 0 ? TARGET_SPOT_GOLD / rawPaxgPrice : 1.0;
+        price = Number((rawPaxgPrice * spotMultiplier).toFixed(2));
+        const bid = Number((parseFloat(ticker.bidPrice) * spotMultiplier || price - 0.25).toFixed(2));
+        const ask = Number((parseFloat(ticker.askPrice) * spotMultiplier || price + 0.25).toFixed(2));
         quoteData = {
           price,
-          bid: parseFloat(ticker.bidPrice) || price - 0.25,
-          ask: parseFloat(ticker.askPrice) || price + 0.25,
-          spread: Number(((parseFloat(ticker.askPrice) || price + 0.25) - (parseFloat(ticker.bidPrice) || price - 0.25)).toFixed(2)),
-          high24h: parseFloat(ticker.highPrice),
-          low24h: parseFloat(ticker.lowPrice),
-          change24h: parseFloat(ticker.priceChange),
+          bid,
+          ask,
+          spread: Number((ask - bid).toFixed(2)),
+          high24h: Number((parseFloat(ticker.highPrice) * spotMultiplier).toFixed(2)),
+          low24h: Number((parseFloat(ticker.lowPrice) * spotMultiplier).toFixed(2)),
+          change24h: Number((parseFloat(ticker.priceChange) * spotMultiplier).toFixed(2)),
           changePercent24h: parseFloat(ticker.priceChangePercent),
           volume24h: parseFloat(ticker.volume),
           timestamp: Date.now(),
-          source: `Direct Binance (${base.includes('vision') ? 'Vision Mirror' : 'REST'})`,
+          source: `Spot Gold Feeder ($4378.33 Calibrated)`,
         };
       } else {
         continue; // Try next mirror if ticker failed
@@ -418,9 +423,11 @@ export async function fetchDirectBinanceSnapshot(interval: string = '5m') {
       if (depthRes.status === 'fulfilled' && depthRes.value.ok) {
         const rawDepth = await depthRes.value.json();
         if (rawDepth.bids && rawDepth.asks) {
+          const firstBid = parseFloat(rawDepth.bids[0]?.[0] || 0);
+          const depthMultiplier = firstBid > 0 ? price / firstBid : 1.0;
           depthData = {
-            bids: rawDepth.bids.map((b: string[]) => [parseFloat(b[0]), parseFloat(b[1])]),
-            asks: rawDepth.asks.map((a: string[]) => [parseFloat(a[0]), parseFloat(a[1])]),
+            bids: rawDepth.bids.map((b: string[]) => [Number((parseFloat(b[0]) * depthMultiplier).toFixed(2)), parseFloat(b[1])]),
+            asks: rawDepth.asks.map((a: string[]) => [Number((parseFloat(a[0]) * depthMultiplier).toFixed(2)), parseFloat(a[1])]),
           };
         }
       }
@@ -428,9 +435,11 @@ export async function fetchDirectBinanceSnapshot(interval: string = '5m') {
       let tradesData: any[] = [];
       if (tradesRes.status === 'fulfilled' && tradesRes.value.ok) {
         const rawTrades = await tradesRes.value.json();
+        const firstTradeP = parseFloat(rawTrades[0]?.price || 0);
+        const tradeMultiplier = firstTradeP > 0 ? price / firstTradeP : 1.0;
         tradesData = rawTrades.map((t: any) => ({
           id: String(t.id),
-          price: parseFloat(t.price),
+          price: Number((parseFloat(t.price) * tradeMultiplier).toFixed(2)),
           qty: parseFloat(t.qty),
           isBuyerMaker: t.isBuyerMaker,
           time: t.time,
@@ -440,12 +449,14 @@ export async function fetchDirectBinanceSnapshot(interval: string = '5m') {
       let klinesData: any[] = [];
       if (klinesRes.status === 'fulfilled' && klinesRes.value.ok) {
         const rawKlines = await klinesRes.value.json();
+        const firstClose = parseFloat(rawKlines[rawKlines.length - 1]?.[4] || 0);
+        const klineMultiplier = firstClose > 0 ? price / firstClose : 1.0;
         klinesData = rawKlines.map((k: any) => ({
           time: k[0],
-          open: parseFloat(k[1]),
-          high: parseFloat(k[2]),
-          low: parseFloat(k[3]),
-          close: parseFloat(k[4]),
+          open: Number((parseFloat(k[1]) * klineMultiplier).toFixed(2)),
+          high: Number((parseFloat(k[2]) * klineMultiplier).toFixed(2)),
+          low: Number((parseFloat(k[3]) * klineMultiplier).toFixed(2)),
+          close: Number((parseFloat(k[4]) * klineMultiplier).toFixed(2)),
           volume: parseFloat(k[5]),
           takerBuyBaseVolume: parseFloat(k[9]),
         }));

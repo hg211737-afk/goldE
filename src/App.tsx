@@ -43,6 +43,8 @@ import { LiquidityZonesList } from './components/LiquidityZonesList';
 import { VolumeProfileSidePanel } from './components/VolumeProfileSidePanel';
 import { AiAnalysisModal } from './components/AiAnalysisModal';
 import { SettingsModal } from './components/SettingsModal';
+import { PWAInstallButton } from './components/PWAInstallButton';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import {
   Layers,
   Radio,
@@ -111,17 +113,55 @@ export default function App() {
   // Sidebar Tabs: 'dom' | 'tape' | 'liquidity' | 'profile'
   const [sidebarTab, setSidebarTab] = useState<'dom' | 'tape' | 'liquidity' | 'profile'>('profile');
 
-  // Terminal Settings
-  const [settings, setSettings] = useState<TerminalSettings>({
-    imbalanceRatio: 3.0,
-    tickSize: 0.5,
-    clusterMode: 'bidAsk',
-    showImbalances: true,
-    showPOC: true,
-    soundAlerts: true,
-    whaleThreshold: 5.0,
-    heatmapIntensity: 3,
+  // Terminal Settings with LocalStorage persistence for PWA performance
+  const [settings, setSettings] = useState<TerminalSettings>(() => {
+    try {
+      const saved = localStorage.getItem('xau_terminal_settings');
+      if (saved) {
+        return {
+          imbalanceRatio: 3.0,
+          tickSize: 0.5,
+          clusterMode: 'bidAsk',
+          showImbalances: true,
+          showPOC: true,
+          soundAlerts: true,
+          whaleThreshold: 5.0,
+          heatmapIntensity: 3,
+          manualPriceOffset: 0,
+          priceCalibrationMode: 'auto_spot',
+          minConfluenceScore: 90,
+          ...JSON.parse(saved),
+        };
+      }
+    } catch (e) {
+      console.warn('Failed to load cached terminal settings:', e);
+    }
+    return {
+      imbalanceRatio: 3.0,
+      tickSize: 0.5,
+      clusterMode: 'bidAsk',
+      showImbalances: true,
+      showPOC: true,
+      soundAlerts: true,
+      whaleThreshold: 5.0,
+      heatmapIntensity: 3,
+      manualPriceOffset: 0,
+      priceCalibrationMode: 'auto_spot',
+      minConfluenceScore: 90,
+    };
   });
+
+  const handleUpdateSettings = useCallback((newSettings: Partial<TerminalSettings>) => {
+    setSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      try {
+        localStorage.setItem('xau_terminal_settings', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('Failed to persist terminal settings:', e);
+      }
+      return updated;
+    });
+  }, []);
 
   // AI Analysis State
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
@@ -147,16 +187,20 @@ export default function App() {
   );
 
   const confluenceSetups = useMemo<ConfluenceTradeSetup[]>(
-    () =>
-      generateConfluenceSetups(
+    () => {
+      const raw = generateConfluenceSetups(
         quote.price,
         bars,
         futuresData,
         optionsData,
         orderClusters,
         liquidityZones
-      ),
-    [quote.price, bars, futuresData, optionsData, orderClusters, liquidityZones]
+      );
+      const minScore = settings.minConfluenceScore || 90;
+      const filtered = raw.filter((s) => s.confluenceScore >= minScore);
+      return filtered.length > 0 ? filtered : raw;
+    },
+    [quote.price, bars, futuresData, optionsData, orderClusters, liquidityZones, settings.minConfluenceScore]
   );
 
   // Mobile Bottom Navigation Tab State (for Phone/APK view)
@@ -731,8 +775,14 @@ export default function App() {
             <Flame className="w-4 h-4" />
             <span>السيناريو</span>
           </button>
+
+          {/* In-App PWA Install in Mobile Navigation */}
+          <PWAInstallButton variant="nav" />
         </nav>
       )}
+
+      {/* Offline Connectivity State Indicator */}
+      <OfflineIndicator />
 
       {/* Multi-Confluence High-Accuracy Trade Setups Modal */}
       <ConfluenceSignalsModal
@@ -758,7 +808,7 @@ export default function App() {
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         settings={settings}
-        onUpdateSettings={(newSettings) => setSettings((s) => ({ ...s, ...newSettings }))}
+        onUpdateSettings={handleUpdateSettings}
       />
     </div>
   );

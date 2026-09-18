@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "XAU/USD Order Flow & Liquidity Terminal",
-  "short_name": "GoldOrderFlow",
-  "description": "منصة احترافية لتحليل تدفق الأوامر والسيولة اللحظية للذهب XAU/USD وشارت الفوت برنت",
+  "name": "XAU/USD Order Flow Terminal",
+  "short_name": "GoldFlow",
+  "description": "منصة احترافية لتحليل تدفق الأوامر والسيولة اللحظية للذهب XAU/USD وشارت الفوت برنت وتوصيات المؤسسات",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -11,16 +11,28 @@
   "theme_color": "#0b0e14",
   "icons": [
     {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
-    },
-    {
-      "src": "/icon.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
     }
   ]
 }

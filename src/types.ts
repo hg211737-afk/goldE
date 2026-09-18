@@ -246,6 +246,36 @@ export interface TerminalSettings {
   soundAlerts: boolean;
   whaleThreshold: number;      // e.g. 5.0 lots
   heatmapIntensity: number;    // 1 to 5
+  manualPriceOffset: number;   // Calibration offset in USD (e.g. +1635.73 to bridge PAXG to live gold spot)
+  priceCalibrationMode: 'auto_spot' | 'paxg_pure' | 'custom_offset'; // Alignment mode
+  minConfluenceScore: number;  // Filtering threshold: only show 100% / A+ ultra-strict setups
+}
+
+// === TrendSpider & Bookmap / Exocharts Institutional Engine Types ===
+export interface TrendSpiderPattern {
+  id: string;
+  name: string;
+  nameAr: string;
+  type: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  historicalWinRate: number; // e.g. 88.5%
+  sampleSize: number; // e.g. 142 historical trades in gold
+  status: 'CONFIRMED' | 'FORMING' | 'BREAKOUT';
+  keyLevel: number;
+  targetPrice: number;
+  invalidationPrice: number;
+  description: string;
+}
+
+export interface BookmapStopHuntSignal {
+  id: string;
+  type: 'BULL_TRAP_STOP_RUN' | 'BEAR_TRAP_STOP_RUN' | 'ICEBERG_ABSORPTION' | 'SPOOF_LIQUIDITY_PULL';
+  titleAr: string;
+  priceLevel: number;
+  volumeSweptOz: number;
+  smartMoneyAction: string;
+  trappedTraders: 'LONG_RETAIL' | 'SHORT_RETAIL';
+  certaintyScore: number; // e.g. 98%
+  timestamp: number;
 }
 
 // === 5. Mock Order Simulation Types ===

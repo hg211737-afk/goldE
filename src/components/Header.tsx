@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { GoldQuote, TimeFrame, ChartViewMode } from '../types';
+import { PWAInstallButton } from './PWAInstallButton';
 import {
   TrendingUp,
   TrendingDown,
@@ -320,6 +321,9 @@ export const Header: React.FC<HeaderProps> = ({
             <Cpu className={`w-4 h-4 ${isAiLoading ? 'animate-spin' : ''}`} />
             <span>كشف السيناريو والذكاء</span>
           </button>
+
+          {/* In-App PWA Install Prompt Button */}
+          <PWAInstallButton variant="header" />
 
           {/* Settings Trigger */}
           <button
