@@ -36,6 +36,8 @@ import { CvdAnalysisView } from './components/CvdAnalysisView';
 import { FuturesFlowView } from './components/FuturesFlowView';
 import { OptionsFlowView } from './components/OptionsFlowView';
 import { OrderClustersView } from './components/OrderClustersView';
+import { SmartScenarioRadarView } from './components/SmartScenarioRadarView';
+import { CorrelationWidget } from './components/CorrelationWidget';
 import { ConfluenceSignalsModal } from './components/ConfluenceSignalsModal';
 import { DomLadder } from './components/DomLadder';
 import { TimeAndSales } from './components/TimeAndSales';
@@ -45,8 +47,8 @@ import { AiAnalysisModal } from './components/AiAnalysisModal';
 import { SettingsModal } from './components/SettingsModal';
 import { MarketSessionBar } from './components/MarketSessionBar';
 import { MarketSessionsModal } from './components/MarketSessionsModal';
-import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Layers,
   Radio,
@@ -60,6 +62,7 @@ import {
   Crosshair,
   Award,
   BarChart2,
+  Radar,
 } from 'lucide-react';
 
 export default function App() {
@@ -537,63 +540,103 @@ export default function App() {
               : 'hidden lg:flex'
           }`}
         >
-          {viewMode === 'footprint' && (
-            <FootprintChart
-              bars={bars}
-              currentPrice={quote.price}
-              liquidityZones={liquidityZones}
-              settings={settings}
-              isFullScreen={isFullScreen}
-              onToggleFullScreen={toggleFullScreen}
-            />
-          )}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={viewMode}
+              initial={{ opacity: 0, y: 6, scale: 0.998 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.998 }}
+              transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 flex flex-col h-full w-full overflow-hidden"
+            >
+              {viewMode === 'scenarios' && (
+                <SmartScenarioRadarView
+                  quote={quote}
+                  timeframe={timeframe}
+                  bars={bars}
+                  depth={depth}
+                  futuresData={futuresData}
+                  optionsData={optionsData}
+                  clustersData={orderClusters}
+                  aiAnalysis={aiAnalysis}
+                  isLoadingAi={isAiLoading}
+                  onRefreshAi={handleTriggerAiAnalysis}
+                  onNavigateToView={(view) => setViewMode(view as ChartViewMode)}
+                  onSimulateOrder={(side, price, sl, tp) => {
+                    setActiveAlert(`⚡ تم تفعيل أمر محاكاة ${side === 'buy' ? 'شراء' : 'بيع'} عند $${price.toFixed(2)} بوقف $${sl.toFixed(2)} وهدف $${tp.toFixed(2)}`);
+                    playSweepChime();
+                    setTimeout(() => setActiveAlert(null), 5000);
+                  }}
+                />
+              )}
 
-          {viewMode === 'futures' && (
-            <FuturesFlowView
-              futuresData={futuresData}
-              quote={quote}
-            />
-          )}
+              {viewMode === 'footprint' && (
+                <FootprintChart
+                  bars={bars}
+                  currentPrice={quote.price}
+                  liquidityZones={liquidityZones}
+                  settings={settings}
+                  isFullScreen={isFullScreen}
+                  onToggleFullScreen={toggleFullScreen}
+                />
+              )}
 
-          {viewMode === 'options' && (
-            <OptionsFlowView
-              optionsData={optionsData}
-              quote={quote}
-            />
-          )}
+              {viewMode === 'futures' && (
+                <FuturesFlowView
+                  futuresData={futuresData}
+                  quote={quote}
+                />
+              )}
 
-          {viewMode === 'clusters' && (
-            <OrderClustersView
-              clusters={orderClusters}
-              quote={quote}
-              depth={depth}
-            />
-          )}
+              {viewMode === 'options' && (
+                <OptionsFlowView
+                  optionsData={optionsData}
+                  quote={quote}
+                />
+              )}
 
-          {viewMode === 'heatmap' && (
-            <LiquidityHeatmap
-              currentPrice={quote.price}
-              liquidityZones={liquidityZones}
-              depth={depth}
-              isFullScreen={isFullScreen}
-              onToggleFullScreen={toggleFullScreen}
-            />
-          )}
+              {viewMode === 'clusters' && (
+                <OrderClustersView
+                  clusters={orderClusters}
+                  quote={quote}
+                  depth={depth}
+                />
+              )}
 
-          {viewMode === 'cvd' && (
-            <CvdAnalysisView
-              bars={bars}
-              currentPrice={quote.price}
-            />
-          )}
+              {viewMode === 'heatmap' && (
+                <LiquidityHeatmap
+                  currentPrice={quote.price}
+                  liquidityZones={liquidityZones}
+                  depth={depth}
+                  isFullScreen={isFullScreen}
+                  onToggleFullScreen={toggleFullScreen}
+                />
+              )}
 
-          {viewMode === 'tradingview' && (
-            <TradingViewWidget
-              timeframe={timeframe}
-              isFullScreen={isFullScreen}
-              onToggleFullScreen={toggleFullScreen}
-            />
-          )}
+              {viewMode === 'cvd' && (
+                <CvdAnalysisView
+                  bars={bars}
+                  currentPrice={quote.price}
+                />
+              )}
+
+              {viewMode === 'correlation' && (
+                <CorrelationWidget
+                  quote={quote}
+                  mode="full"
+                  onNavigateToView={(view) => setViewMode(view as ChartViewMode)}
+                />
+              )}
+
+              {viewMode === 'tradingview' && (
+                <TradingViewWidget
+                  timeframe={timeframe}
+                  isFullScreen={isFullScreen}
+                  onToggleFullScreen={toggleFullScreen}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
         {/* Sidebar Panel: Hidden in full-screen mode to provide clean focused workspace */}
@@ -604,96 +647,80 @@ export default function App() {
             }`}
           >
             {/* Sidebar Tab Selector */}
-            <div className="flex items-center bg-slate-900 border-b border-slate-800 p-1">
-              <button
-                onClick={() => {
-                  setSidebarTab('profile');
-                  setMobileTab('profile');
-                }}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${
-                  (mobileTab === 'profile' || sidebarTab === 'profile')
-                    ? 'bg-amber-500 text-slate-950 shadow-xs'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-                title="بروفايل الحجم - كشف عقد الحجم العالي HVNs ومنطقة القيمة"
-              >
-                <BarChart2 className="w-3.5 h-3.5" />
-                <span>بروفايل الحجم</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setSidebarTab('liquidity');
-                  setMobileTab('liquidity');
-                }}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${
-                  (mobileTab === 'liquidity' || sidebarTab === 'liquidity')
-                    ? 'bg-amber-500 text-slate-950 shadow-xs'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>السيولة</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setSidebarTab('dom');
-                  setMobileTab('dom');
-                }}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${
-                  (mobileTab === 'dom' || sidebarTab === 'dom')
-                    ? 'bg-amber-500 text-slate-950 shadow-xs'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>DOM</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setSidebarTab('tape');
-                  setMobileTab('tape');
-                }}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${
-                  (mobileTab === 'tape' || sidebarTab === 'tape')
-                    ? 'bg-amber-500 text-slate-950 shadow-xs'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <Radio className="w-3.5 h-3.5" />
-                <span>الصفقات</span>
-              </button>
+            <div className="relative flex items-center bg-slate-950/90 border-b border-slate-800/80 p-1">
+              {[
+                { id: 'profile', label: 'بروفايل الحجم', icon: BarChart2, title: 'بروفايل الحجم - كشف عقد الحجم العالي HVNs ومنطقة القيمة' },
+                { id: 'liquidity', label: 'السيولة', icon: Sparkles, title: 'مناطق السيولة البنكية' },
+                { id: 'dom', label: 'DOM', icon: Layers, title: 'عمق دفتر الأوامر اللحظي' },
+                { id: 'tape', label: 'الصفقات', icon: Radio, title: 'شريط الصفقات المباشرة Time & Sales' },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = mobileTab === tab.id || sidebarTab === tab.id;
+                return (
+                  <motion.button
+                    key={tab.id}
+                    whileTap={{ scale: 0.94 }}
+                    onClick={() => {
+                      setSidebarTab(tab.id as any);
+                      setMobileTab(tab.id as any);
+                    }}
+                    className={`relative flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer z-10 ${
+                      isActive ? 'text-slate-950' : 'text-slate-400 hover:text-white'
+                    }`}
+                    title={tab.title}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeSidebarTabPill"
+                        className="absolute inset-0 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-lg shadow-sm -z-10"
+                        transition={{ type: 'spring', stiffness: 500, damping: 36 }}
+                      />
+                    )}
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                  </motion.button>
+                );
+              })}
             </div>
 
-            {/* Active Sidebar Content */}
+            {/* Active Sidebar Content with smooth transitions */}
             <div className="flex-1 overflow-hidden">
-              {(mobileTab === 'profile' || (mobileTab === 'chart' && sidebarTab === 'profile')) && (
-                <VolumeProfileSidePanel
-                  bars={bars}
-                  currentPrice={quote.price}
-                  tickSize={settings.tickSize}
-                />
-              )}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={mobileTab !== 'chart' ? mobileTab : sidebarTab}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
+                  className="h-full w-full overflow-hidden flex flex-col"
+                >
+                  {(mobileTab === 'profile' || (mobileTab === 'chart' && sidebarTab === 'profile')) && (
+                    <VolumeProfileSidePanel
+                      bars={bars}
+                      currentPrice={quote.price}
+                      tickSize={settings.tickSize}
+                    />
+                  )}
 
-              {(mobileTab === 'liquidity' || (mobileTab === 'chart' && sidebarTab === 'liquidity')) && (
-                <LiquidityZonesList zones={liquidityZones} currentPrice={quote.price} />
-              )}
+                  {(mobileTab === 'liquidity' || (mobileTab === 'chart' && sidebarTab === 'liquidity')) && (
+                    <LiquidityZonesList zones={liquidityZones} currentPrice={quote.price} />
+                  )}
 
-              {(mobileTab === 'dom' || (mobileTab === 'chart' && sidebarTab === 'dom')) && (
-                <DomLadder
-                  depth={depth}
-                  currentPrice={quote.price}
-                  spread={quote.spread}
-                  imbalanceThreshold={settings.imbalanceRatio}
-                  onThresholdChange={(ratio) => setSettings((s) => ({ ...s, imbalanceRatio: ratio }))}
-                />
-              )}
+                  {(mobileTab === 'dom' || (mobileTab === 'chart' && sidebarTab === 'dom')) && (
+                    <DomLadder
+                      depth={depth}
+                      currentPrice={quote.price}
+                      spread={quote.spread}
+                      imbalanceThreshold={settings.imbalanceRatio}
+                      onThresholdChange={(ratio) => setSettings((s) => ({ ...s, imbalanceRatio: ratio }))}
+                    />
+                  )}
 
-              {(mobileTab === 'tape' || (mobileTab === 'chart' && sidebarTab === 'tape')) && (
-                <TimeAndSales trades={trades} />
-              )}
+                  {(mobileTab === 'tape' || (mobileTab === 'chart' && sidebarTab === 'tape')) && (
+                    <TimeAndSales trades={trades} />
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             {/* Bottom Quick AI Bias Widget */}
@@ -717,97 +744,63 @@ export default function App() {
 
       {/* Mobile Bottom Dock Navigation: Hidden in full-screen mode to keep maximum viewing area */}
       {!isFullScreen && (
-        <nav className="lg:hidden bg-[#111622] border-t border-slate-800/90 px-2 py-1.5 flex items-center justify-around z-40 select-none pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))]">
-          <button
-            onClick={() => setMobileTab('chart')}
-            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-semibold transition-all ${
-              mobileTab === 'chart'
-                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>الشارت</span>
-          </button>
+        <nav className="lg:hidden relative bg-slate-950/95 backdrop-blur-xl border-t border-slate-800/80 px-2 py-1.5 flex items-center justify-around z-40 select-none pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))] shadow-2xl">
+          {[
+            { id: 'chart', label: 'الشارت', icon: Layers },
+            { id: 'profile', label: 'بروفايل', icon: BarChart2 },
+            { id: 'liquidity', label: 'السيولة', icon: Sparkles },
+            { id: 'dom', label: 'عمق DOM', icon: Activity },
+            { id: 'tape', label: 'الصفقات', icon: Radio },
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = mobileTab === item.id;
+            return (
+              <motion.button
+                key={item.id}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => {
+                  setMobileTab(item.id as any);
+                  if (item.id !== 'chart') {
+                    setSidebarTab(item.id as any);
+                  }
+                }}
+                className={`relative flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl text-[10px] font-bold transition-colors cursor-pointer z-10 ${
+                  isActive ? 'text-slate-950' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeMobileNavTabPill"
+                    className="absolute inset-0 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 rounded-xl shadow-md -z-10"
+                    transition={{ type: 'spring', stiffness: 500, damping: 36 }}
+                  />
+                )}
+                <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950' : 'text-slate-400'}`} />
+                <span>{item.label}</span>
+              </motion.button>
+            );
+          })}
 
-          <button
-            onClick={() => {
-              setMobileTab('profile');
-              setSidebarTab('profile');
-            }}
-            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-semibold transition-all ${
-              mobileTab === 'profile'
-                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <BarChart2 className="w-4 h-4" />
-            <span>بروفايل</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setMobileTab('liquidity');
-              setSidebarTab('liquidity');
-            }}
-            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-semibold transition-all ${
-              mobileTab === 'liquidity'
-                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>السيولة</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setMobileTab('dom');
-              setSidebarTab('dom');
-            }}
-            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-semibold transition-all ${
-              mobileTab === 'dom'
-                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-            <span>عمق DOM</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setMobileTab('tape');
-              setSidebarTab('tape');
-            }}
-            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-semibold transition-all ${
-              mobileTab === 'tape'
-                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Radio className="w-4 h-4" />
-            <span>الصفقات</span>
-          </button>
-
-          <button
+          <motion.button
+            whileTap={{ scale: 0.92 }}
             onClick={() => setIsConfluenceModalOpen(true)}
-            className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg text-[10px] font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 shadow-xs transition-all active:scale-95"
+            className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl text-[10px] font-bold text-emerald-300 bg-emerald-950/50 border border-emerald-500/40 shadow-xs active:scale-95 cursor-pointer"
           >
             <Crosshair className="w-4 h-4 text-emerald-400" />
             <span>صفقات A+</span>
-          </button>
+          </motion.button>
 
-          <button
-            onClick={handleTriggerAiAnalysis}
-            className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-lg text-[10px] font-bold text-slate-950 bg-gradient-to-r from-amber-500 to-yellow-600 shadow-sm transition-all active:scale-95"
+          <motion.button
+            whileTap={{ scale: 0.92 }}
+            onClick={() => {
+              setViewMode('scenarios');
+              setMobileTab('chart');
+            }}
+            className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl text-[10px] font-bold text-slate-950 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 shadow-md active:scale-95 cursor-pointer"
           >
-            <Flame className="w-4 h-4" />
-            <span>السيناريو</span>
-          </button>
-
-          {/* In-App PWA Install in Mobile Navigation */}
-          <PWAInstallButton variant="nav" />
+            <Radar className="w-4 h-4 text-slate-950" />
+            <span>الرادار</span>
+          </motion.button>
         </nav>
       )}
 

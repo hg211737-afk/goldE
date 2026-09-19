@@ -39,7 +39,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   onRefresh,
   currentPrice,
 }) => {
-  const [activeTab, setActiveTab] = useState<'scenarios' | 'confluence' | 'setup'>('scenarios');
+  const [activeTab, setActiveTab] = useState<'scenarios' | 'smart_levels' | 'confluence' | 'setup'>('scenarios');
 
   if (!isOpen) return null;
 
@@ -101,6 +101,23 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
             {analysis?.primaryScenario && (
               <span className="text-[10px] px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded-full font-mono">
                 {analysis.primaryScenario.probability}%
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('smart_levels')}
+            className={`flex items-center gap-1.5 px-3 py-2 font-bold border-b-2 transition-all cursor-pointer ${
+              activeTab === 'smart_levels'
+                ? 'border-amber-400 text-amber-300 bg-amber-500/10 rounded-t-lg'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Crosshair className="w-3.5 h-3.5 text-emerald-400" />
+            <span>مستويات Smart Buy & Sell</span>
+            {analysis?.smartBuyLevels && (
+              <span className="text-[10px] px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded-full font-mono">
+                {(analysis.smartBuyLevels?.length || 0) + (analysis.smartSellLevels?.length || 0)}
               </span>
             )}
           </button>
@@ -356,6 +373,149 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                       💡 {analysis.scenarioAnalysisDetails}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* TAB 2: SMART BUY & SELL LEVELS */}
+              {activeTab === 'smart_levels' && (
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  {/* Smart Buy Levels Group */}
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-950/20 via-slate-900 to-slate-900 border border-emerald-500/30 space-y-3">
+                    <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                        <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                          <span>مستويات الشراء الذكية (Smart Buy Levels)</span>
+                          <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded">
+                            {analysis.smartBuyLevels?.length || 0} مستويات قناصة
+                          </span>
+                        </h4>
+                      </div>
+                      <span className="text-[11px] text-emerald-400/80">محمية بجدران الليمت والـ SSL</span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {(analysis.smartBuyLevels || []).map((lvl) => (
+                        <div
+                          key={lvl.id}
+                          className="bg-slate-950/80 border border-emerald-500/20 hover:border-emerald-500/50 rounded-lg p-3 transition-all"
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                                {lvl.tierLabelAr}
+                              </span>
+                              <span className="text-xs font-bold text-slate-200">{lvl.levelNameAr}</span>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                              توافق {lvl.confluenceScore}%
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-2">
+                            <div className="bg-slate-900/90 rounded p-1.5 border border-slate-800">
+                              <span className="text-[10px] text-slate-400 block">السعر المستهدف</span>
+                              <span className="font-mono font-bold text-emerald-400 text-sm">
+                                ${lvl.price.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="bg-slate-900/90 rounded p-1.5 border border-slate-800">
+                              <span className="text-[10px] text-slate-400 block">جدار الليمت</span>
+                              <span className="font-mono font-bold text-slate-200">
+                                {lvl.orderWallVolume} Lots
+                              </span>
+                            </div>
+                            <div className="bg-slate-900/90 rounded p-1.5 border border-slate-800">
+                              <span className="text-[10px] text-slate-400 block">وقف الخسارة (SL)</span>
+                              <span className="font-mono font-bold text-rose-400">
+                                ${lvl.suggestedStopLoss.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="bg-slate-900/90 rounded p-1.5 border border-slate-800">
+                              <span className="text-[10px] text-slate-400 block">العائد للمخاطرة</span>
+                              <span className="font-mono font-bold text-amber-400">
+                                {lvl.riskReward}
+                              </span>
+                            </div>
+                          </div>
+
+                          <p className="text-[11px] text-slate-300 leading-snug">
+                            <strong className="text-emerald-400 font-semibold">المحفز الفني: </strong>
+                            {lvl.technicalCatalystAr}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Smart Sell Levels Group */}
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-rose-950/20 via-slate-900 to-slate-900 border border-rose-500/30 space-y-3">
+                    <div className="flex items-center justify-between border-b border-rose-500/20 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+                        <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                          <span>مستويات البيع الذكية (Smart Sell Levels)</span>
+                          <span className="text-[10px] font-mono bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded">
+                            {analysis.smartSellLevels?.length || 0} مستويات تصريف
+                          </span>
+                        </h4>
+                      </div>
+                      <span className="text-[11px] text-rose-400/80">محمية بجدران العرض ومقاومة الجاما</span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {(analysis.smartSellLevels || []).map((lvl) => (
+                        <div
+                          key={lvl.id}
+                          className="bg-slate-950/80 border border-rose-500/20 hover:border-rose-500/50 rounded-lg p-3 transition-all"
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px] font-bold">
+                                {lvl.tierLabelAr}
+                              </span>
+                              <span className="text-xs font-bold text-slate-200">{lvl.levelNameAr}</span>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-rose-400 bg-rose-950/60 px-2 py-0.5 rounded border border-rose-500/30">
+                              توافق {lvl.confluenceScore}%
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-2">
+                            <div className="bg-slate-900/90 rounded p-1.5 border border-slate-800">
+                              <span className="text-[10px] text-slate-400 block">السعر المستهدف</span>
+                              <span className="font-mono font-bold text-rose-400 text-sm">
+                                ${lvl.price.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="bg-slate-900/90 rounded p-1.5 border border-slate-800">
+                              <span className="text-[10px] text-slate-400 block">جدار الليمت</span>
+                              <span className="font-mono font-bold text-slate-200">
+                                {lvl.orderWallVolume} Lots
+                              </span>
+                            </div>
+                            <div className="bg-slate-900/90 rounded p-1.5 border border-slate-800">
+                              <span className="text-[10px] text-slate-400 block">وقف الخسارة (SL)</span>
+                              <span className="font-mono font-bold text-emerald-400">
+                                ${lvl.suggestedStopLoss.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="bg-slate-900/90 rounded p-1.5 border border-slate-800">
+                              <span className="text-[10px] text-slate-400 block">العائد للمخاطرة</span>
+                              <span className="font-mono font-bold text-amber-400">
+                                {lvl.riskReward}
+                              </span>
+                            </div>
+                          </div>
+
+                          <p className="text-[11px] text-slate-300 leading-snug">
+                            <strong className="text-rose-400 font-semibold">المحفز الفني: </strong>
+                            {lvl.technicalCatalystAr}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 

@@ -7,7 +7,9 @@ export type ChartViewMode =
   | 'options'
   | 'clusters'
   | 'cvd'
-  | 'tradingview';
+  | 'tradingview'
+  | 'scenarios'
+  | 'correlation';
 
 export interface GoldQuote {
   symbol: string;
@@ -203,6 +205,88 @@ export interface ConfluenceTradeSetup {
   timestamp: number;
 }
 
+export interface SmartPriceLevelAction {
+  actionType: 'BUY' | 'SELL';
+  actionNameAr: string;
+  triggerConditionAr: string;
+  entryPrice: number;
+  stopLoss: number;
+  target1: number;
+  target2: number;
+  riskReward: string;
+  descriptionAr: string;
+}
+
+export interface SmartPriceLevel {
+  id: string;
+  type: 'SMART_BUY' | 'SMART_SELL';
+  levelName: string;
+  levelNameAr: string;
+  price: number;
+  priceRange: [number, number];
+  confluenceScore: number; // 0-100%
+  tier: 'TIER_1_SNIPER' | 'TIER_2_ABSORPTION' | 'TIER_3_DEEP_DEFENSE';
+  tierLabelAr: string;
+  orderWallVolume: number; // in lots
+  orderWallType: 'LIMIT_BUY_WALL' | 'LIMIT_SELL_WALL' | 'ICEBERG_ABSORPTION' | 'GAMMA_WALL';
+  technicalCatalystAr: string;
+  suggestedStopLoss: number;
+  invalidationTrigger: string;
+  projectedTarget1: number;
+  projectedTarget2: number;
+  riskReward: string;
+  status: 'ACTIVE_PRIME' | 'APPROACHING' | 'RETESTED' | 'INVALIDATED';
+  distanceToCurrentUsd: number;
+  distancePercent: number;
+
+  // Flexible Dual-Action Features (مرونة وقبول الاتجاهين عند الكسر أو عدم الكسر/الارتداد)
+  isFlexibleDual?: boolean;
+  positionVsCurrent?: 'ABOVE' | 'BELOW'; // هل المستوى أعلى أم أسفل السعر اللحظي
+  breakoutAction?: SmartPriceLevelAction; // عند الاختراق والكسر
+  rejectionAction?: SmartPriceLevelAction; // عند عدم الكسر والارتداد
+  dualBehaviorSummaryAr?: string;
+}
+
+export interface CorrelatedAsset {
+  symbol: string;
+  name: string;
+  nameAr: string;
+  price: number;
+  change24h: number;
+  changePercent24h: number;
+  correlationCoeff: number; // -1.00 to +1.00
+  correlationType: 'STRONG_INVERSE' | 'MODERATE_INVERSE' | 'STRONG_POSITIVE' | 'MODERATE_POSITIVE' | 'NEUTRAL';
+  correlationLabelAr: string;
+  institutionalWeight: number; // e.g. 35% for DXY
+  divergenceSignal: 'BULLISH_LEAD' | 'BEARISH_PRESSURE' | 'CONVERGENT_NORMAL' | 'ANOMALOUS_DECOUPLING';
+  divergenceSignalAr: string;
+  institutionalInsightAr: string;
+  sparkline: number[];
+  category: 'CURRENCY' | 'YIELD' | 'COMMODITY' | 'VOLATILITY';
+}
+
+export interface MacroCorrelationAnalysis {
+  overallGoldAlignmentScore: number; // 0 - 100%
+  overallBias: 'BULLISH_TAILWIND' | 'BEARISH_HEADWIND' | 'NEUTRAL_BALANCED';
+  overallBiasAr: string;
+  dxyPressureIndex: number; // 0 - 100
+  yieldsPressureIndex: number;
+  institutionalSummaryAr: string;
+  divergenceAlert: string | null;
+  assets: CorrelatedAsset[];
+  timestamp: number;
+}
+
+export interface MicroStructureTelemetry {
+  cvdDivergence: string;
+  absorptionState: string;
+  gammaFlipStrike: number;
+  whaleWallSupport: number;
+  whaleWallResistance: number;
+  imbalanceRatioAskBid: number;
+  vwapDeviationBand: string;
+}
+
 export interface MarketScenario {
   name: string;
   nameAr: string;
@@ -229,6 +313,10 @@ export interface AIAnalysisResult {
   primaryScenario?: MarketScenario;
   alternativeScenario?: MarketScenario;
   scenarioAnalysisDetails?: string;
+  // Smart Buy & Smart Sell Levels Detection:
+  smartBuyLevels?: SmartPriceLevel[];
+  smartSellLevels?: SmartPriceLevel[];
+  microStructure?: MicroStructureTelemetry;
   setup: {
     type: string;
     entryZone: string;

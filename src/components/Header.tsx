@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { GoldQuote, TimeFrame, ChartViewMode } from '../types';
-import { PWAInstallButton } from './PWAInstallButton';
+import { motion } from 'motion/react';
 import {
   TrendingUp,
   TrendingDown,
@@ -16,6 +16,9 @@ import {
   RefreshCw,
   Maximize2,
   Minimize2,
+  Radar,
+  Sparkles,
+  Globe,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -192,129 +195,161 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Center / Right Controls: Timeframe & View Modes */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Timeframe Buttons */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5">
-            {(['1m', '3m', '5m', '15m', '1h', '4h'] as TimeFrame[]).map((tf) => (
-              <button
-                key={tf}
-                onClick={() => onTimeframeChange(tf)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded transition-all font-['JetBrains_Mono'] ${
-                  timeframe === tf
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                }`}
-              >
-                {tf}
-              </button>
-            ))}
+          {/* Timeframe Buttons with smooth layout animation */}
+          <div className="relative flex items-center bg-slate-950/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-1 shadow-inner">
+            {(['1m', '3m', '5m', '15m', '1h', '4h'] as TimeFrame[]).map((tf) => {
+              const isActive = timeframe === tf;
+              return (
+                <motion.button
+                  key={tf}
+                  onClick={() => onTimeframeChange(tf)}
+                  whileTap={{ scale: 0.94 }}
+                  className={`relative px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors font-['JetBrains_Mono'] cursor-pointer z-10 ${
+                    isActive ? 'text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTfPill"
+                      className="absolute inset-0 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-lg shadow-sm -z-10"
+                      transition={{ type: 'spring', stiffness: 500, damping: 36 }}
+                    />
+                  )}
+                  <span>{tf}</span>
+                </motion.button>
+              );
+            })}
           </div>
 
-          {/* View Mode Switchers */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 overflow-x-auto max-w-full">
-            <button
-              onClick={() => onViewModeChange('footprint')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
-                viewMode === 'footprint'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-              title="شارت تدفق الأوامر الفوت برنت - Bid x Ask Imbalances"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>فوت برنت</span>
-            </button>
-
-            <button
-              onClick={() => onViewModeChange('futures')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
-                viewMode === 'futures'
-                  ? 'bg-amber-600 text-white shadow-sm font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-              title="تحليل تدفق عقود الفيوتشرز، الفائدة المفتوحة ومعدل التمويل والتصفيات"
-            >
-              <Activity className="w-3.5 h-3.5" />
-              <span>فيوتشر فلو</span>
-            </button>
-
-            <button
-              onClick={() => onViewModeChange('options')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
-                viewMode === 'options'
-                  ? 'bg-emerald-600 text-white shadow-sm font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-              title="تحليل تدفق عقود الخيارات (Options Flow)، الجاما GEX وسعر الألم الأقصى"
-            >
-              <Radio className="w-3.5 h-3.5" />
-              <span>أوبشن فلو</span>
-            </button>
-
-            <button
-              onClick={() => onViewModeChange('clusters')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
-                viewMode === 'clusters'
-                  ? 'bg-rose-600 text-white shadow-sm font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-              title="كاشف مناطق تجمع الأوردرات وجدران الليمت المعلقة"
-            >
-              <Flame className="w-3.5 h-3.5" />
-              <span>تجمع الأوردرات</span>
-            </button>
-
-            <button
-              onClick={() => onViewModeChange('heatmap')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
-                viewMode === 'heatmap'
-                  ? 'bg-amber-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-              title="الخريطة الحرارية لعمق السيولة وحشود أوامر التصفية"
-            >
-              <span>هيت ماب</span>
-            </button>
-
-            <button
-              onClick={() => onViewModeChange('cvd')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
-                viewMode === 'cvd'
-                  ? 'bg-teal-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-              title="دلتا الحجم التراكمي وتدفق الامتصاص المؤسسي"
-            >
-              <span>CVD</span>
-            </button>
-
-            <button
-              onClick={() => onViewModeChange('tradingview')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
-                viewMode === 'tradingview'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-              title="شارت تريدنج فيو المباشر للذهب"
-            >
-              <LineChart className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">تريدنج فيو</span>
-            </button>
+          {/* View Mode Switchers - World-Class Animated Tab Bar */}
+          <div className="relative flex items-center bg-slate-950/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-1 overflow-x-auto max-w-full shadow-inner scrollbar-none">
+            {[
+              {
+                id: 'scenarios' as ChartViewMode,
+                label: 'السيناريو والمستويات الذكية',
+                icon: Radar,
+                badge: 'AI',
+                title: 'رادار السيناريوهات المتطورة ومستويات الشراء والبيع الذكية Smart Buy & Sell',
+                isFeatured: true,
+              },
+              {
+                id: 'footprint' as ChartViewMode,
+                label: 'فوت برنت',
+                icon: Layers,
+                title: 'شارت تدفق الأوامر الفوت برنت - Bid x Ask Imbalances',
+              },
+              {
+                id: 'futures' as ChartViewMode,
+                label: 'فيوتشر فلو',
+                icon: Activity,
+                badge: 'OI',
+                title: 'تحليل تدفق عقود الفيوتشرز، الفائدة المفتوحة ومعدل التمويل والتصفيات',
+              },
+              {
+                id: 'options' as ChartViewMode,
+                label: 'أوبشن فلو',
+                icon: Radio,
+                badge: 'GEX',
+                title: 'تحليل تدفق عقود الخيارات (Options Flow)، الجاما GEX وسعر الألم الأقصى',
+              },
+              {
+                id: 'clusters' as ChartViewMode,
+                label: 'تجمع الأوردرات',
+                icon: Flame,
+                badge: 'جدران',
+                title: 'كاشف مناطق تجمع الأوردرات وجدران الليمت المعلقة',
+              },
+              {
+                id: 'heatmap' as ChartViewMode,
+                label: 'هيت ماب',
+                icon: Activity,
+                title: 'الخريطة الحرارية لعمق السيولة وحشود أوامر التصفية',
+              },
+              {
+                id: 'cvd' as ChartViewMode,
+                label: 'CVD',
+                icon: TrendingUp,
+                title: 'دلتا الحجم التراكمي وتدفق الامتصاص المؤسسي',
+              },
+              {
+                id: 'correlation' as ChartViewMode,
+                label: 'ترابط الأسواق DXY',
+                icon: Globe,
+                badge: 'DXY',
+                title: 'مصفوفة الارتباط الكلي: الذهب ومؤشر الدولار وعوائد السندات والعملات',
+              },
+              {
+                id: 'tradingview' as ChartViewMode,
+                label: 'تريدنج فيو',
+                icon: LineChart,
+                title: 'شارت تريدنج فيو المباشر للذهب',
+              },
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = viewMode === item.id;
+              return (
+                <motion.button
+                  key={item.id}
+                  onClick={() => onViewModeChange(item.id)}
+                  whileTap={{ scale: 0.96 }}
+                  className={`relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap cursor-pointer z-10 ${
+                    isActive
+                      ? item.isFeatured
+                        ? 'text-slate-950 font-bold'
+                        : 'text-white font-bold'
+                      : item.isFeatured
+                      ? 'text-amber-400/90 hover:text-amber-300 hover:bg-slate-900/60'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  }`}
+                  title={item.title}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeViewTabPill"
+                      className={`absolute inset-0 rounded-lg shadow-md -z-10 ${
+                        item.isFeatured
+                          ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 shadow-amber-500/20'
+                          : 'bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 shadow-blue-600/25'
+                      }`}
+                      transition={{ type: 'spring', stiffness: 500, damping: 36 }}
+                    />
+                  )}
+                  <Icon className={`w-3.5 h-3.5 ${isActive && !item.isFeatured ? 'text-blue-200' : ''}`} />
+                  <span>{item.label}</span>
+                  {item.badge && (
+                    <span
+                      className={`text-[9px] font-mono px-1.5 py-0.2 rounded-full font-bold transition-colors ${
+                        isActive
+                          ? item.isFeatured
+                            ? 'bg-slate-950/20 text-slate-950'
+                            : 'bg-white/20 text-white'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700/60'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </motion.button>
+              );
+            })}
           </div>
 
           {/* High-Precision Confluence Signals Trigger */}
           {onOpenConfluenceModal && (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={onOpenConfluenceModal}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all cursor-pointer active:scale-95"
               title="صفقات التوافق الرباعي عالية الدقة"
             >
               <span className="w-2 h-2 rounded-full bg-slate-950 animate-ping"></span>
               <span>صفقات A+ مؤسسية</span>
-            </button>
+            </motion.button>
           )}
 
           {/* AI Institutional Scenario & Analysis Trigger */}
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             onClick={onOpenAiModal}
             disabled={isAiLoading}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-bold text-xs shadow-[0_0_18px_rgba(245,158,11,0.35)] transition-all cursor-pointer active:scale-95 disabled:opacity-50"
@@ -322,21 +357,19 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Cpu className={`w-4 h-4 ${isAiLoading ? 'animate-spin' : ''}`} />
             <span>كشف السيناريو والذكاء</span>
-          </button>
-
-          {/* In-App PWA Install Prompt Button */}
-          <PWAInstallButton variant="header" />
+          </motion.button>
 
           {/* Market Sessions & Liquidity Button */}
           {onOpenMarketSessionsModal && (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={onOpenMarketSessionsModal}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white font-medium text-xs transition-all cursor-pointer"
               title="أوقات الجلسات العالمية ومستويات السيولة وساعات افتتاح السوق"
             >
               <Clock className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden lg:inline">الجلسات والسيولة</span>
-            </button>
+            </motion.button>
           )}
 
           {/* Settings Trigger */}

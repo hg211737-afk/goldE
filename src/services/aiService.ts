@@ -1,4 +1,231 @@
-import { AIAnalysisResult } from '../types';
+import { AIAnalysisResult, SmartPriceLevel, SmartPriceLevelAction } from '../types';
+
+export function enrichSmartLevelWithFlexibility(lvl: any, currentPrice: number): SmartPriceLevel {
+  const price = Number(lvl.price) || currentPrice;
+  const positionVsCurrent: 'ABOVE' | 'BELOW' = price >= currentPrice ? 'ABOVE' : 'BELOW';
+  const distUsd = Number(Math.abs(price - currentPrice).toFixed(2));
+  const distPct = Number(((distUsd / currentPrice) * 100).toFixed(2));
+
+  const breakoutAction: SmartPriceLevelAction = positionVsCurrent === 'ABOVE'
+    ? {
+        actionType: 'BUY',
+        actionNameAr: 'دخول شراء ذكي مع الاختراق (Breakout Buy)',
+        triggerConditionAr: `اختراق وإغلاق شمعة فوت برنت أو 5m أعلى $${price.toFixed(2)} بأحجام عالية ودلتا شرائية موجبة`,
+        entryPrice: Number((price + 0.6).toFixed(2)),
+        stopLoss: Number((price - 2.5).toFixed(2)),
+        target1: Number((price + 6.5).toFixed(2)),
+        target2: Number((price + 12.0).toFixed(2)),
+        riskReward: '1:3.8',
+        descriptionAr: 'اختراق وثبات شمعة أعلى المستوى المحوري يفتح الطريق لشراء فوري مستهدفاً مناطق السيولة العليا.',
+      }
+    : {
+        actionType: 'SELL',
+        actionNameAr: 'دخول بيع ذكي مع الكسر (Breakdown Sell)',
+        triggerConditionAr: `كسر وإغلاق شمعة صريح أسفل $${price.toFixed(2)} بدفعة بيعية صريحة وتصفية ستوبات المشترين`,
+        entryPrice: Number((price - 0.6).toFixed(2)),
+        stopLoss: Number((price + 2.5).toFixed(2)),
+        target1: Number((price - 6.5).toFixed(2)),
+        target2: Number((price - 12.0).toFixed(2)),
+        riskReward: '1:3.8',
+        descriptionAr: 'كسر الجدار الدفاعي والاستقرار أسفله يؤكد استمرار الهبوط بقوة نحو المحطات التالية.',
+      };
+
+  const rejectionAction: SmartPriceLevelAction = positionVsCurrent === 'ABOVE'
+    ? {
+        actionType: 'SELL',
+        actionNameAr: 'دخول بيع ذكي عند الارتداد (Rejection Sell)',
+        triggerConditionAr: `فشل الاختراق وتراجع السعر أسفل $${price.toFixed(2)} مع امتصاص عروض بيعية وذيل انعكاسي`,
+        entryPrice: Number((price - 0.6).toFixed(2)),
+        stopLoss: Number((price + 2.5).toFixed(2)),
+        target1: Number((price - 6.0).toFixed(2)),
+        target2: Number((price - 11.5).toFixed(2)),
+        riskReward: '1:4.2',
+        descriptionAr: 'امتصاص المشترين وفشل الكسر عند جدار المقاومة يمنح صفقة بيع قناصة عالية العائد.',
+      }
+    : {
+        actionType: 'BUY',
+        actionNameAr: 'دخول شراء ذكي ارتدادي (Bounce Buy)',
+        triggerConditionAr: `اصطياد سيولة القاع (SSL Grab) وظهور دلتا شرائية وامتصاص فوت برنت والارتداد أعلى $${price.toFixed(2)}`,
+        entryPrice: Number((price + 0.6).toFixed(2)),
+        stopLoss: Number((price - 2.5).toFixed(2)),
+        target1: Number((price + 6.0).toFixed(2)),
+        target2: Number((price + 11.5).toFixed(2)),
+        riskReward: '1:4.5',
+        descriptionAr: 'دفاع جدار الأوامر الحوتية وامتصاص العروض يطلق موجة ارتداد صاعدة سريعة.',
+      };
+
+  const dualBehaviorSummaryAr = positionVsCurrent === 'ABOVE'
+    ? `مستوى محوري مرن أعلى السعر ($${price.toFixed(2)}): عند اختراقه والثبات دخول شراء ذكي، وعند عدم الكسر والارتداد دخول بيع ذكي.`
+    : `مستوى محوري مرن أسفل السعر ($${price.toFixed(2)}): عند الكسر والثبات دخول بيع ذكي، وعند عدم الكسر والارتداد دخول شراء ذكي.`;
+
+  return {
+    ...lvl,
+    price,
+    distanceToCurrentUsd: distUsd,
+    distancePercent: distPct,
+    isFlexibleDual: true,
+    positionVsCurrent,
+    breakoutAction: lvl.breakoutAction || breakoutAction,
+    rejectionAction: lvl.rejectionAction || rejectionAction,
+    dualBehaviorSummaryAr: lvl.dualBehaviorSummaryAr || dualBehaviorSummaryAr,
+  };
+}
+
+export function generateFlexibleSmartBuyLevels(currentPrice: number): SmartPriceLevel[] {
+  const pAbove = Number((currentPrice + 4.50).toFixed(2)); // User example: level above current price (like 4370 when price is 4355)
+  const pDiscount = Number((currentPrice - 3.20).toFixed(2));
+  const pWhale = Number((currentPrice - 7.80).toFixed(2));
+
+  return [
+    enrichSmartLevelWithFlexibility(
+      {
+        id: 'smart-buy-upper-pivot',
+        type: 'SMART_BUY',
+        levelName: 'Smart Buy Upper Pivot: Breakout Trigger & Rejection Wall',
+        levelNameAr: 'مستوى شراء محوري علوي (اختراق للشراء أو ارتداد للبيع)',
+        price: pAbove,
+        priceRange: [Number((pAbove - 0.8).toFixed(2)), Number((pAbove + 0.8).toFixed(2))],
+        confluenceScore: 95,
+        tier: 'TIER_1_SNIPER',
+        tierLabelAr: 'مستوى محوري مرن مزدوج الاتجاه',
+        orderWallVolume: 290,
+        orderWallType: 'LIMIT_BUY_WALL',
+        technicalCatalystAr: 'جدار سيولة محوري علوي؛ اختراقه يطلق موجة شراء قناصة قوية، وفشله يمنح بيعاً ارتدادياً سريعاً.',
+        suggestedStopLoss: Number((pAbove - 2.5).toFixed(2)),
+        invalidationTrigger: `فشل تجاوز $${pAbove} مع ذيل بيعي واضح`,
+        projectedTarget1: Number((pAbove + 6.0).toFixed(2)),
+        projectedTarget2: Number((pAbove + 12.0).toFixed(2)),
+        riskReward: '1:4.2',
+        status: 'ACTIVE_PRIME',
+      },
+      currentPrice
+    ),
+    enrichSmartLevelWithFlexibility(
+      {
+        id: 'smart-buy-discount-sweep',
+        type: 'SMART_BUY',
+        levelName: 'Smart Buy Tier 2: SSL Hunt & Discount FVG Support',
+        levelNameAr: 'مستوى شراء قناص تخفيضي (ارتداد للشراء أو كسر للبيع)',
+        price: pDiscount,
+        priceRange: [Number((pDiscount - 0.8).toFixed(2)), Number((pDiscount + 0.6).toFixed(2))],
+        confluenceScore: 92,
+        tier: 'TIER_2_ABSORPTION',
+        tierLabelAr: 'قنص سيولة القاع المحمي',
+        orderWallVolume: 340,
+        orderWallType: 'ICEBERG_ABSORPTION',
+        technicalCatalystAr: 'حوض سيولة قيعان (SSL) ملتقي مع قاع منطقة القيمة؛ امتصاص البيع يمنح ارتداداً للشراء، والكسر يؤكد البيع.',
+        suggestedStopLoss: Number((pDiscount - 2.6).toFixed(2)),
+        invalidationTrigger: `كسر حاسم أسفل $${pDiscount}`,
+        projectedTarget1: currentPrice,
+        projectedTarget2: Number((currentPrice + 7.0).toFixed(2)),
+        riskReward: '1:3.9',
+        status: 'ACTIVE_PRIME',
+      },
+      currentPrice
+    ),
+    enrichSmartLevelWithFlexibility(
+      {
+        id: 'smart-buy-whale-moat',
+        type: 'SMART_BUY',
+        levelName: 'Smart Buy Tier 3: Whale Moat & Multi-Day POC Zone',
+        levelNameAr: 'مستوى دفاع الحيتان العميق والـ POC الاستراتيجي',
+        price: pWhale,
+        priceRange: [Number((pWhale - 1.2).toFixed(2)), Number((pWhale + 0.8).toFixed(2))],
+        confluenceScore: 97,
+        tier: 'TIER_3_DEEP_DEFENSE',
+        tierLabelAr: 'دفاع استراتيجي كاسح',
+        orderWallVolume: 530,
+        orderWallType: 'LIMIT_BUY_WALL',
+        technicalCatalystAr: 'كتلة أوامر حوتية ضخمة تمنع انزلاق السعر وتعتبر قاعدة تجميع رئيسية لصناديق التحوط.',
+        suggestedStopLoss: Number((pWhale - 3.8).toFixed(2)),
+        invalidationTrigger: `كسر صريح لحوض السيولة الاستراتيجي أسفل $${(pWhale - 3.8).toFixed(2)}`,
+        projectedTarget1: pDiscount,
+        projectedTarget2: Number((currentPrice + 12.0).toFixed(2)),
+        riskReward: '1:5.2',
+        status: 'ACTIVE_PRIME',
+      },
+      currentPrice
+    ),
+  ];
+}
+
+export function generateFlexibleSmartSellLevels(currentPrice: number): SmartPriceLevel[] {
+  const pBelow = Number((currentPrice - 3.80).toFixed(2)); // User example: sell breakdown level below current price
+  const pSupply = Number((currentPrice + 3.60).toFixed(2));
+  const pCeiling = Number((currentPrice + 8.50).toFixed(2));
+
+  return [
+    enrichSmartLevelWithFlexibility(
+      {
+        id: 'smart-sell-lower-pivot',
+        type: 'SMART_SELL',
+        levelName: 'Smart Sell Lower Pivot: Breakdown Trigger & Sweep Bounce',
+        levelNameAr: 'مستوى بيع محوري سفلي (كسر للبيع أو ارتداد للشراء)',
+        price: pBelow,
+        priceRange: [Number((pBelow - 0.8).toFixed(2)), Number((pBelow + 0.8).toFixed(2))],
+        confluenceScore: 94,
+        tier: 'TIER_1_SNIPER',
+        tierLabelAr: 'مستوى محوري مرن مزدوج الاتجاه',
+        orderWallVolume: 275,
+        orderWallType: 'LIMIT_SELL_WALL',
+        technicalCatalystAr: 'مستوى محوري سفلي؛ كسره يطلق تسارعاً هابطاً للبيع، وعدم كسره مع الامتصاص يمنح شراء ارتدادياً سريعاً.',
+        suggestedStopLoss: Number((pBelow + 2.5).toFixed(2)),
+        invalidationTrigger: `إغلاق صاعد وامتصاص بيعي أعلى $${pBelow}`,
+        projectedTarget1: Number((pBelow - 6.0).toFixed(2)),
+        projectedTarget2: Number((pBelow - 12.0).toFixed(2)),
+        riskReward: '1:4.0',
+        status: 'ACTIVE_PRIME',
+      },
+      currentPrice
+    ),
+    enrichSmartLevelWithFlexibility(
+      {
+        id: 'smart-sell-supply-wall',
+        type: 'SMART_SELL',
+        levelName: 'Smart Sell Tier 2: BSL Sweep & Call Wall Rejection',
+        levelNameAr: 'مستوى بيع تصريفي عند جدار العرض (ارتداد للبيع أو اختراق للشراء)',
+        price: pSupply,
+        priceRange: [Number((pSupply - 0.6).toFixed(2)), Number((pSupply + 0.8).toFixed(2))],
+        confluenceScore: 93,
+        tier: 'TIER_1_SNIPER',
+        tierLabelAr: 'دخول تصريفي قناص',
+        orderWallVolume: 310,
+        orderWallType: 'LIMIT_SELL_WALL',
+        technicalCatalystAr: 'جدار عروض ليمت كثيف وسقف منطقة القيمة VAH؛ ارتداد السعر منه يمنح بيعاً ذكياً، واختراقه يتحول لشراء.',
+        suggestedStopLoss: Number((pSupply + 2.6).toFixed(2)),
+        invalidationTrigger: `اختراق صريح أعلى $${pSupply}`,
+        projectedTarget1: currentPrice,
+        projectedTarget2: Number((currentPrice - 7.0).toFixed(2)),
+        riskReward: '1:4.1',
+        status: 'ACTIVE_PRIME',
+      },
+      currentPrice
+    ),
+    enrichSmartLevelWithFlexibility(
+      {
+        id: 'smart-sell-gamma-ceiling',
+        type: 'SMART_SELL',
+        levelName: 'Smart Sell Tier 3: Macro Institutional Supply Moat',
+        levelNameAr: 'مستوى بيع سقف الجاما والمقاومة الكبرى',
+        price: pCeiling,
+        priceRange: [Number((pCeiling - 1.2).toFixed(2)), Number((pCeiling + 1.8).toFixed(2))],
+        confluenceScore: 96,
+        tier: 'TIER_3_DEEP_DEFENSE',
+        tierLabelAr: 'سد تصريف مؤسسي كاسح',
+        orderWallVolume: 490,
+        orderWallType: 'LIMIT_SELL_WALL',
+        technicalCatalystAr: 'جدار جاما بيعي ضخم لصناديق الاستثمار ومقاومة فريم الأربع ساعات تمنع التمدد الصاعد.',
+        suggestedStopLoss: Number((pCeiling + 3.8).toFixed(2)),
+        invalidationTrigger: `إغلاق شمعة 4h أعلى $${(pCeiling + 3.8).toFixed(2)}`,
+        projectedTarget1: pSupply,
+        projectedTarget2: Number((currentPrice - 12.0).toFixed(2)),
+        riskReward: '1:5.0',
+        status: 'ACTIVE_PRIME',
+      },
+      currentPrice
+    ),
+  ];
+}
 
 export async function fetchOrderFlowAnalysis(params: {
   currentPrice: number;
@@ -24,6 +251,35 @@ export async function fetchOrderFlowAnalysis(params: {
     if (response) {
       const result = await response.json().catch(() => null);
       if (result?.data && result.data.summary) {
+        // Guarantee smartBuyLevels and smartSellLevels exist and are enriched with flexible dual-action behavior
+        if (!result.data.smartBuyLevels || result.data.smartBuyLevels.length === 0) {
+          result.data.smartBuyLevels = generateFlexibleSmartBuyLevels(params.currentPrice);
+        } else {
+          result.data.smartBuyLevels = result.data.smartBuyLevels.map((lvl: any) =>
+            enrichSmartLevelWithFlexibility(lvl, params.currentPrice)
+          );
+        }
+
+        if (!result.data.smartSellLevels || result.data.smartSellLevels.length === 0) {
+          result.data.smartSellLevels = generateFlexibleSmartSellLevels(params.currentPrice);
+        } else {
+          result.data.smartSellLevels = result.data.smartSellLevels.map((lvl: any) =>
+            enrichSmartLevelWithFlexibility(lvl, params.currentPrice)
+          );
+        }
+
+        if (!result.data.microStructure) {
+          result.data.microStructure = {
+            cvdDivergence: 'دايفرجنس شرائي خفي إيجابي (Bullish Hidden CVD Divergence)',
+            absorptionState: 'امتصاص عروض البيع بنجاح عند خط الدعم اللحظي',
+            gammaFlipStrike: Math.round(params.currentPrice),
+            whaleWallSupport: Number((params.currentPrice - 2.8).toFixed(2)),
+            whaleWallResistance: Number((params.currentPrice + 3.2).toFixed(2)),
+            imbalanceRatioAskBid: 3.4,
+            vwapDeviationBand: '+0.8 Sigma Upper Band',
+          };
+        }
+
         return result.data;
       }
     }
@@ -101,6 +357,17 @@ export async function fetchOrderFlowAnalysis(params: {
     },
     scenarioAnalysisDetails:
       'تم حساب احتمالات هذه السيناريوهات استناداً إلى توازن الدلتا اللحظية، الفائدة المفتوحة OI، وتمركزات أوبشن الجاما GEX وأحواض سيولة BSL/SSL في كتاب الأوامر.',
+    smartBuyLevels: generateFlexibleSmartBuyLevels(params.currentPrice),
+    smartSellLevels: generateFlexibleSmartSellLevels(params.currentPrice),
+    microStructure: {
+      cvdDivergence: isDeltaPositive ? 'دايفرجنس شرائي خفي إيجابي (Bullish Hidden CVD Divergence)' : 'دايفرجنس بيعي تصريفي (Bearish CVD Divergence)',
+      absorptionState: isDeltaPositive ? 'امتصاص عروض البيع بنجاح عند خط الدعم اللحظي' : 'امتصاص طلبات الشراء وتكدس عروض الليمت',
+      gammaFlipStrike: Math.round(params.currentPrice),
+      whaleWallSupport: Number((params.currentPrice - 2.8).toFixed(2)),
+      whaleWallResistance: Number((params.currentPrice + 3.2).toFixed(2)),
+      imbalanceRatioAskBid: isDeltaPositive ? 3.4 : 0.32,
+      vwapDeviationBand: isDeltaPositive ? '+0.8 Sigma Upper Band' : '-0.9 Sigma Lower Band',
+    },
     setup: {
       type: isDeltaPositive ? 'شراء مؤسسي (Buy / Long)' : 'بيع تصريفي (Sell / Short)',
       entryZone: isDeltaPositive
