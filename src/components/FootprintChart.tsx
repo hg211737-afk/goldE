@@ -128,6 +128,54 @@ export const FootprintChart: React.FC<FootprintChartProps> = ({
       );
     });
 
+    // Volume Profile (VP) calculation & rendering alongside Footprint
+    const volumeProfileMap: { [priceKey: string]: { total: number; buy: number; sell: number } } = {};
+    let maxProfileVol = 1;
+
+    visibleBars.forEach((bar) => {
+      bar.levels.forEach((lvl) => {
+        const pKey = Math.round(lvl.price * 2) / 2; // bin to 0.5 step
+        if (!volumeProfileMap[pKey]) {
+          volumeProfileMap[pKey] = { total: 0, buy: 0, sell: 0 };
+        }
+        volumeProfileMap[pKey].total += lvl.totalQty;
+        volumeProfileMap[pKey].buy += lvl.askQty;
+        volumeProfileMap[pKey].sell += lvl.bidQty;
+        if (volumeProfileMap[pKey].total > maxProfileVol) {
+          maxProfileVol = volumeProfileMap[pKey].total;
+        }
+      });
+    });
+
+    const vpMaxWidth = 130;
+    const vpStartX = chartWidth - vpMaxWidth - 15;
+
+    // Render Volume Profile bars horizontally on the right side of chart
+    Object.entries(volumeProfileMap).forEach(([pStr, data]) => {
+      const p = parseFloat(pStr);
+      if (p < minPrice || p > maxPrice) return;
+      const y = getY(p);
+      const barH = Math.max(3, (chartHeight / priceDiff) * 0.45);
+      const wRatio = Math.min(1, data.total / maxProfileVol);
+      const currentVpW = wRatio * vpMaxWidth;
+
+      // Background profile bar
+      ctx.fillStyle = "rgba(30, 41, 59, 0.45)";
+      ctx.fillRect(vpStartX, y - barH / 2, vpMaxWidth, barH);
+
+      // Buy vs Sell breakdown in profile bar
+      const buyWidth = currentVpW * (data.buy / (data.total || 1));
+      ctx.fillStyle = "rgba(16, 185, 129, 0.55)";
+      ctx.fillRect(vpStartX, y - barH / 2, buyWidth, barH);
+
+      ctx.fillStyle = "rgba(239, 68, 68, 0.55)";
+      ctx.fillRect(vpStartX + buyWidth, y - barH / 2, currentVpW - buyWidth, barH);
+
+      ctx.strokeStyle = "rgba(51, 65, 85, 0.5)";
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(vpStartX, y - barH / 2, currentVpW, barH);
+    });
+
     // Footprint Candles
     visibleBars.forEach((bar, idx) => {
       const x = 20 + idx * colStep;
