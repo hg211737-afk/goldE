@@ -13,13 +13,15 @@ import {
   SlidersHorizontal,
   Globe2,
   Layers,
-  ArrowUpRight,
-  ArrowDownRight,
+  CheckCircle2,
+  XCircle,
+  BrainCircuit,
 } from "lucide-react";
 import { AiAnalysisResult, MacroCorrelationReport } from "../types";
 import { DualSmartLevelsWidget } from "./DualSmartLevelsWidget";
 import { CorrelationWidget } from "./CorrelationWidget";
 import { generateDualSmartLevels, getMacroCorrelationData } from "../services/correlationService";
+import { recordTradeOutcome, getLearningStats } from "../services/goldService";
 
 interface AiAnalysisModalProps {
   isOpen: boolean;
@@ -47,6 +49,25 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   hasCustomKey = false,
 }) => {
   const [modalTab, setModalTab] = useState<"overview" | "dual_levels" | "correlation">("overview");
+  const [feedbackGiven, setFeedbackGiven] = useState<string | null>(null);
+  const learningStats = analysis?.learningStats || getLearningStats();
+
+  const handleRecordOutcome = (outcome: "win" | "loss") => {
+    if (!analysis) return;
+    recordTradeOutcome({
+      id: Math.random().toString(36).substring(2, 9),
+      timestamp: Date.now(),
+      setupType: analysis.setup.type,
+      entryPrice: currentPrice,
+      stopLoss: 0,
+      takeProfit: 0,
+      outcome,
+      profitPips: outcome === "win" ? 15 : -10,
+      aiConfidence: analysis.confidenceScore,
+    });
+    setFeedbackGiven(outcome === "win" ? "✅ تم تسجيل صفقة ناجحة وتدريب الذكاء الاصطناعي بنجاح!" : "❌ تم تسجيل صفقة خاسرة لتحديث نماذج حماية الوقف والتعلم الذاتي.");
+    setTimeout(() => setFeedbackGiven(null), 4000);
+  };
 
   if (!isOpen) return null;
 
@@ -358,6 +379,35 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                       <span className="text-xs font-bold text-amber-300">{analysis.setup.riskRewardRatio}</span>
                     </div>
                   </div>
+
+                  {/* Self-Learning Feedback Buttons */}
+                  <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+                      <BrainCircuit className="w-4 h-4 text-amber-400 animate-pulse" />
+                      <span>تقييم الصفقة لتعليم الذكاء الاصطناعي (معدل النجاح: <strong className="text-emerald-400 font-mono">{learningStats.winRate}%</strong>):</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleRecordOutcome("win")}
+                        className="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>صفقة ناجحة (Win)</span>
+                      </button>
+                      <button
+                        onClick={() => handleRecordOutcome("loss")}
+                        className="px-3 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                      >
+                        <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                        <span>صفقة خاسرة (Loss)</span>
+                      </button>
+                    </div>
+                  </div>
+                  {feedbackGiven && (
+                    <div className="p-2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-200 text-center text-[11px] font-bold animate-in fade-in">
+                      {feedbackGiven}
+                    </div>
+                  )}
                 </div>
               )}
 

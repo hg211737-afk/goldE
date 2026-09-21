@@ -131,7 +131,7 @@ export interface FusionParadigmInfo {
 
 export type Timeframe = "1m" | "3m" | "5m" | "15m" | "1h" | "4h";
 
-export type ViewMode = "footprint" | "heatmap" | "cvd" | "tradingview";
+export type ViewMode = "footprint" | "heatmap" | "cvd" | "tradingview" | "optionflow" | "futures";
 
 export type SidebarTab = "liquidity" | "correlation" | "dom" | "tape";
 
@@ -285,6 +285,19 @@ export interface MacroCorrelationReport {
   institutionalAdviceAr: string;
 }
 
+export interface TradeOutcomeRecord {
+  id: string;
+  timestamp: number;
+  setupType: string;
+  entryPrice: number;
+  stopLoss: number;
+  takeProfit: number;
+  outcome: "win" | "loss" | "breakeven";
+  profitPips: number;
+  aiConfidence: number;
+  notes?: string;
+}
+
 export interface AiAnalysisResult {
   bias: string;
   confidenceScore: number;
@@ -309,5 +322,10 @@ export interface AiAnalysisResult {
     riskRewardRatio: string;
   };
   keyAdvice: string;
+  learningStats?: {
+    totalRecorded: number;
+    winRate: number;
+    adaptiveAdjustmentAr: string;
+  };
 }
 

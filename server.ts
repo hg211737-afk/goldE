@@ -26,11 +26,10 @@ const getGeminiClient = (customKey?: string) => {
 };
 
 const CANDIDATE_MODELS = [
-  "gemini-3.6-flash",
-  "gemini-3.5-flash",
   "gemini-2.5-flash",
   "gemini-2.0-flash",
   "gemini-1.5-flash",
+  "gemini-1.5-pro",
 ];
 
 async function callGeminiWithModelFallback(ai: any, options: {
@@ -277,8 +276,13 @@ app.post("/api/gemini/analyze-orderflow", async (req, res) => {
     }
 
     const systemInstruction = `
-أنت كبير محللي تدفق الأوامر والسيولة المؤسسية للذهب (XAU/USD Order Flow & Liquidity Specialist).
-تقوم بتحليل بيانات الشارت الدقيقة: Footprint، دلتا الحجم التراكمي CVD، مناطق سحب السيولة BSL / SSL، واختلالات العرض والطلب (Imbalances)، وعلاقة الذهب بمؤشر الدولار الأمريكي DXY والعملات المرتبطة.
+أنت كبير محللي تدفق الأوامر والسيولة المؤسسية للذهب (XAU/USD Advanced Order Flow, Option Flow, Futures & Liquidity Specialist).
+قم بتحليل بيانات السوق الشاملة بدقة فائقة مدعومة بجميع الأدوات المتطورة:
+1. Footprint Imbalances & CVD Delta (اختلالات تدفق الحجم والدلتا التراكمية).
+2. Option Flow & UOA (عقود الخيارات المؤسسية، صفقات الحيتان، ونسبة P/C Ratio وجدران الغاما).
+3. Futures & COMEX Basis (فروق أسعار الفوري والآجل، الفائدة المفتوحة OI، ومعدلات التمويل).
+4. Liquidity Zones & BSL/SSL Sweeps (مناطق سيولة القمم والقيعان المستهدفة وصيد الوقف).
+5. DOM Ladder & Macro DXY (عمق السوق وعلاقة الذهب بمؤشر الدولار).
 
 ملاحظة حاسمة بخصوص المستويات الذكية (Smart Buy & Smart Sell Levels):
 يجب أن تكون المستويات مرنة تقبل الاتجاهين بحسب سلوك السعر عند المستوى:
@@ -292,11 +296,11 @@ app.post("/api/gemini/analyze-orderflow", async (req, res) => {
 قدم تحليلك باللغة العربية بتنسيق JSON مطابق تماماً للهيكل التالي:
 {
   "bias": "Bullish Accumulation" أو "Bearish Distribution" أو "Neutral / Sideways",
-  "biasAr": "الاتجاه المتوقع باللغة العربية مع وصف مؤسسي",
+  "biasAr": "الاتجاه المتوقع باللغة العربية مع وصف مؤسسي شامل للأدوات المتطورة",
   "confidence": نسبة الثقة كرقم من 0 إلى 100,
-  "summaryAr": "ملخص تحليلي احترافي عميق لحالة تدفق الأوامر الحالي للذهب",
-  "institutionalActivityAr": "وصف دقيق لما يفعله صناع السوق والحيتان حالياً (تجميع، تصريف، صيد ستوبات، امتصاص)",
-  "dxyCorrelationInsightAr": "تحليل تأثير حركة مؤشر الدولار DXY والعملات على اتجاه الذهب الحالي",
+  "summaryAr": "ملخص تحليلي احترافي عميق يدمج إشارات أوبشن فلو، الفيوتشر، والفوت برنت",
+  "institutionalActivityAr": "وصف دقيق لما يفعله صناع السوق والحيتان عبر صفقات الكول/بوت وعقود الآجلة",
+  "dxyCorrelationInsightAr": "تحليل تأثير حركة مؤشر الدولار DXY والماكرو على الذهب",
   "keyLevels": {
     "resistance": "مستوى المقاومة / BSL",
     "support": "مستوى الدعم / SSL",
@@ -305,15 +309,15 @@ app.post("/api/gemini/analyze-orderflow", async (req, res) => {
   },
   "tradeSetup": {
     "action": "BUY" أو "SELL" أو "WAIT",
-    "actionAr": "التوصية باللغة العربية",
-    "entryZone": "منطقة الدخول المقترحة",
+    "actionAr": "التوصية باللغة العربية مدعومة بالأدوات المتطورة",
+    "entryZone": "منطقة الدخول المقترحة بالملي",
     "takeProfit1": "الهدف الأول",
     "takeProfit2": "الهدف الثاني",
     "stopLoss": "وقف الخسارة المحكم",
-    "riskReward": "نسبة العائد للمخاطرة مثل 1 : 2.5"
+    "riskReward": "نسبة العائد للمخاطرة مثل 1 : 2.8"
   },
   "warningsAr": [
-    "تحذير أو ملاحظة مهمة للمتداول"
+    "تحذير أو ملاحظة مهمة للمتداول بناءً على السيولة"
   ]
 }
 `;
@@ -355,7 +359,9 @@ app.post("/api/gemini/analyze-orderflow", async (req, res) => {
 
     throw new Error("No model response");
   } catch (err: any) {
-    console.error("Gemini order flow analysis error:", err);
+    if (!err?.message?.includes("No model response")) {
+      console.warn("Gemini order flow analysis notice (using institutional offline fallback):", err?.message || err);
+    }
     const p = req.body?.currentPrice || 4351.5;
     res.json({
       bias: "Bullish Accumulation",

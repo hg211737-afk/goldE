@@ -108,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <div className="text-xl sm:text-2xl font-bold tracking-tight">
-              ${quote.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${quote.price.toFixed(3)}
             </div>
             <div className="flex flex-col text-[11px] leading-tight">
               <span className={`font-semibold flex items-center ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>
@@ -125,28 +125,28 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="hidden md:flex items-center gap-3 text-xs bg-slate-900/60 border border-slate-800 px-3 py-1.5 rounded-lg font-['JetBrains_Mono']">
             <div>
               <span className="text-slate-400 text-[10px] block">طلب (Bid)</span>
-              <span className="text-emerald-400 font-semibold">${quote.bid.toFixed(2)}</span>
+              <span className="text-emerald-400 font-semibold">${quote.bid.toFixed(3)}</span>
             </div>
             <div className="w-[1px] h-6 bg-slate-800" />
             <div>
               <span className="text-slate-400 text-[10px] block">عرض (Ask)</span>
-              <span className="text-rose-400 font-semibold">${quote.ask.toFixed(2)}</span>
+              <span className="text-rose-400 font-semibold">${quote.ask.toFixed(3)}</span>
             </div>
             <div className="w-[1px] h-6 bg-slate-800" />
             <div>
               <span className="text-slate-400 text-[10px] block">سبريد (Spread)</span>
-              <span className="text-amber-300 font-medium">${quote.spread.toFixed(2)}</span>
+              <span className="text-amber-300 font-medium">${quote.spread.toFixed(3)}</span>
             </div>
           </div>
 
           <div className="hidden lg:flex items-center gap-3 text-xs text-slate-300">
             <div>
               <span className="text-slate-400 text-[10px] block">أعلى 24h</span>
-              <span className="font-['JetBrains_Mono'] text-white">${quote.high24h.toFixed(2)}</span>
+              <span className="font-['JetBrains_Mono'] text-white">${quote.high24h.toFixed(3)}</span>
             </div>
             <div>
               <span className="text-slate-400 text-[10px] block">أدنى 24h</span>
-              <span className="font-['JetBrains_Mono'] text-white">${quote.low24h.toFixed(2)}</span>
+              <span className="font-['JetBrains_Mono'] text-white">${quote.low24h.toFixed(3)}</span>
             </div>
           </div>
         </div>
@@ -168,51 +168,73 @@ export const Header: React.FC<HeaderProps> = ({
             ))}
           </div>
 
-          <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5">
+          <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 flex-wrap">
             <button
               onClick={() => onViewModeChange("footprint")}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
                 viewMode === "footprint"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
               }`}
-              title="شارت تدفق الأوامر الفوت برنت - Bid x Ask Imbalances"
+              title="شارت تدفق الأوامر الفوت برنت"
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>فوت برنت (Footprint)</span>
+              <span>فوت برنت</span>
             </button>
             <button
               onClick={() => onViewModeChange("heatmap")}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
                 viewMode === "heatmap"
                   ? "bg-amber-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
               }`}
-              title="الخريطة الحرارية لعمق السيولة وحشود أوامر التصفية"
+              title="هيت ماب السيولة"
             >
               <Flame className="w-3.5 h-3.5" />
-              <span>هيت ماب (Heatmap)</span>
+              <span>هيت ماب</span>
             </button>
             <button
               onClick={() => onViewModeChange("cvd")}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
                 viewMode === "cvd"
                   ? "bg-teal-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
               }`}
-              title="دلتا الحجم التراكمي وتدفق الامتصاص المؤسسي"
+              title="CVD ودلتا الحجم"
             >
               <Activity className="w-3.5 h-3.5" />
-              <span>CVD ودلتا</span>
+              <span>CVD</span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("optionflow")}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
+                viewMode === "optionflow"
+                  ? "bg-amber-500 text-slate-950 shadow-sm font-bold"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+              title="أوبشن فلو وتدفق الخيارات المؤسسية"
+            >
+              <span>أوبشن فلو</span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("futures")}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
+                viewMode === "futures"
+                  ? "bg-indigo-600 text-white shadow-sm font-bold"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+              title="العقود الآجلة وفروق الأسعار"
+            >
+              <span>الفيوتشر</span>
             </button>
             <button
               onClick={() => onViewModeChange("tradingview")}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
                 viewMode === "tradingview"
                   ? "bg-blue-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
               }`}
-              title="شارت تريدنج فيو المباشر للذهب"
+              title="تريدنج فيو المباشر"
             >
               <ChartLine className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">تريدنج فيو</span>

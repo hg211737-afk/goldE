@@ -33,10 +33,13 @@ import {
   generateDualSmartLevels,
 } from "./services/correlationService";
 import { Header } from "./components/Header";
+import { MarketSessionWidget } from "./components/MarketSessionWidget";
 import { FootprintChart } from "./components/FootprintChart";
 import { LiquidityHeatmap } from "./components/LiquidityHeatmap";
 import { CvdAnalysisView } from "./components/CvdAnalysisView";
 import { TradingViewWidget } from "./components/TradingViewWidget";
+import { OptionFlowView } from "./components/OptionFlowView";
+import { FuturesAnalysisView } from "./components/FuturesAnalysisView";
 import { LiquidityZonesList } from "./components/LiquidityZonesList";
 import { DomLadder } from "./components/DomLadder";
 import { TimeAndSales } from "./components/TimeAndSales";
@@ -47,13 +50,13 @@ import { SettingsModal } from "./components/SettingsModal";
 export function App() {
   const [quote, setQuote] = useState<GoldQuote>({
     symbol: "XAU/USD",
-    price: 2742.6,
-    bid: 2742.35,
-    ask: 2742.75,
-    spread: 0.4,
-    high24h: 2758.1,
-    low24h: 2731.5,
-    change24h: 11.1,
+    price: 2742.685,
+    bid: 2742.450,
+    ask: 2742.920,
+    spread: 0.470,
+    high24h: 2758.150,
+    low24h: 2731.500,
+    change24h: 11.120,
     changePercent24h: 0.41,
     volume24h: 38492.4,
     timestamp: Date.now(),
@@ -325,6 +328,8 @@ export function App() {
         connectionStatus={connectionStatus}
         hasCustomApiKey={Boolean(settings.customGeminiApiKey && settings.customGeminiApiKey.trim())}
       />
+      
+      <MarketSessionWidget />
 
       {alertBanner && (
         <div className="bg-gradient-to-r from-amber-600 via-rose-600 to-amber-600 text-white px-4 py-1.5 text-xs font-bold text-center flex items-center justify-center gap-2 animate-bounce select-none shadow-md">
@@ -357,6 +362,12 @@ export function App() {
           )}
           {viewMode === "cvd" && (
             <CvdAnalysisView bars={footprintBars} currentPrice={quote.price} />
+          )}
+          {viewMode === "optionflow" && (
+            <OptionFlowView currentPrice={quote.price} />
+          )}
+          {viewMode === "futures" && (
+            <FuturesAnalysisView currentPrice={quote.price} />
           )}
           {viewMode === "tradingview" && <TradingViewWidget timeframe={timeframe} />}
         </main>
