@@ -10,26 +10,84 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <title>XAU/USD Order Flow & Liquidity Terminal | منصة تدفق الأوامر والسيولة للذهب</title>
-    <meta name="description" content="منصة احترافية متطورة لتحليل الذهب XAU/USD: كاشف السيناريوهات المتطورة للذكاء الاصطناعي، ومستويات Smart Buy & Sell، وتدفق الأوامر الفوت برنت، وتدفق الفيوتشرز، وعقود الخيارات وجدران الليمت المعلقة مع فلترة أوقات الجلسات والسيولة العالية." />
-    <meta property="og:title" content="XAU/USD Order Flow & Liquidity Terminal | منصة تدفق الأوامر والسيولة للذهب" />
-    <meta property="og:description" content="منصة احترافية متطورة لتحليل الذهب XAU/USD: كاشف السيناريوهات المتطورة للذكاء الاصطناعي، ومستويات Smart Buy & Sell، وتدفق الأوامر الفوت برنت، وتدفق الفيوتشرز، وعقود الخيارات وجدران الليمت المعلقة مع فلترة أوقات الجلسات والسيولة العالية." />
+    <title>Gold OrderFlow Pro | منصة تحليل تدفق أوامر الذهب اللحظية</title>
+    <meta name="description" content="منصة احترافية لمراقبة وتحليل تدفق أوامر الذهب (XAU/USD) اللحظية بشموع الفوت برنت (Footprint Chart)، وخريطة السيولة الحرارية (Liquidity Heatmap)، وعمق السوق (DOM Ladder)، ورادار صيد السيولة المؤسسية (BSL/SSL Sweeps)." />
+    <meta property="og:title" content="Gold OrderFlow Pro | منصة تحليل تدفق أوامر الذهب اللحظية" />
+    <meta property="og:description" content="منصة احترافية لمراقبة وتحليل تدفق أوامر الذهب (XAU/USD) اللحظية بشموع الفوت برنت (Footprint Chart)، وخريطة السيولة الحرارية (Liquidity Heatmap)، وعمق السوق (DOM Ladder)، ورادار صيد السيولة المؤسسية (BSL/SSL Sweeps)." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
-      // Suppress benign [vite] websocket connection retry warnings in AI Studio preview sandbox
+      // Suppress benign [vite] websocket connection retry warnings in AI Studio preview sandbox (DISABLE_HMR=true)
       (function() {
+        const isViteMessage = (arg) => {
+          if (!arg) return false;
+          let str = '';
+          if (typeof arg === 'string') {
+            str = arg;
+          } else if (typeof arg === 'object') {
+            try {
+              str = (arg.message || '') + ' ' + (arg.stack || '') + ' ' + (arg.reason || '') + ' ' + JSON.stringify(arg);
+            } catch (e) {
+              str = String(arg);
+            }
+          } else {
+            str = String(arg);
+          }
+          return str.includes('[vite]') || 
+                 str.includes('WebSocket') ||
+                 str.includes('websocket') ||
+                 str.includes('failed to connect') ||
+                 str.includes('could not connect') ||
+                 str.includes('connecting...') ||
+                 str.includes('connected.');
+        };
+
         const origError = console.error;
         console.error = function(...args) {
-          if (typeof args[0] === 'string' && (args[0].includes('[vite]') || args[0].includes('WebSocket connection to') || args[0].includes('failed to connect to websocket'))) {
-            console.debug(...args);
-            return;
-          }
+          if (args.some(isViteMessage)) return;
           origError.apply(console, args);
         };
+
+        const origWarn = console.warn;
+        console.warn = function(...args) {
+          if (args.some(isViteMessage)) return;
+          origWarn.apply(console, args);
+        };
+
+        const origInfo = console.info;
+        console.info = function(...args) {
+          if (args.some(isViteMessage)) return;
+          origInfo.apply(console, args);
+        };
+
+        const origLog = console.log;
+        console.log = function(...args) {
+          if (args.some(isViteMessage)) return;
+          origLog.apply(console, args);
+        };
+
+        const origDebug = console.debug;
+        console.debug = function(...args) {
+          if (args.some(isViteMessage)) return;
+          origDebug.apply(console, args);
+        };
+
+        window.addEventListener('error', function(event) {
+          if (event && (isViteMessage(event.message) || isViteMessage(event.error))) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          if (event && isViteMessage(event.reason)) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+          }
+        }, true);
       })();
     </script>
   </head>

@@ -17,9 +17,9 @@ export default defineConfig(() => {
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
           id: '/',
-          name: 'XAU/USD Order Flow Terminal',
-          short_name: 'GoldTerminal',
-          description: 'منصة احترافية لتحليل تدفق الأوامر والسيولة اللحظية للذهب XAU/USD وشارت الفوت برنت وتوصيات المؤسسات',
+          name: 'Polyglot Script Studio',
+          short_name: 'PolyglotStudio',
+          description: 'منصة ذكية متقدمة لدمج وتوليد سكربتات برمجية هجينة ومتعددة اللغات',
           theme_color: '#0b0e14',
           background_color: '#0b0e14',
           display: 'standalone',

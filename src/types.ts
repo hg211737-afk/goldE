@@ -1,15 +1,141 @@
-export type TimeFrame = '1m' | '3m' | '5m' | '15m' | '1h' | '4h';
+// ==============================================================================
+// 1. Polyglot Script Studio Types
+// ==============================================================================
 
-export type ChartViewMode =
-  | 'footprint'
-  | 'heatmap'
-  | 'futures'
-  | 'options'
-  | 'clusters'
-  | 'cvd'
-  | 'tradingview'
-  | 'scenarios'
-  | 'correlation';
+export type ProgrammingLanguage = 
+  | 'python' 
+  | 'javascript' 
+  | 'typescript' 
+  | 'bash' 
+  | 'rust' 
+  | 'go' 
+  | 'c' 
+  | 'cpp' 
+  | 'sql' 
+  | 'lua'
+  | 'php'
+  | 'ruby'
+  | 'powershell';
+
+export type FusionParadigm = 
+  | 'subprocess_pipes' 
+  | 'ffi_bindings' 
+  | 'polyglot_single_file' 
+  | 'pipeline_orchestration' 
+  | 'microservice_ipc' 
+  | 'shared_memory_wasm'
+  | 'wasm_bridge';
+
+export interface ScriptFile {
+  id: string;
+  filename: string;
+  language: ProgrammingLanguage | string;
+  isEntrypoint: boolean;
+  fileRole: string;
+  explanation: string;
+  code: string;
+}
+
+export interface ExecutionGuide {
+  prerequisites: string[];
+  installCommands: string[];
+  runCommand: string;
+  expectedOutput: string;
+  troubleshooting: string[];
+}
+
+export interface BenchmarkStats {
+  speedGainVsPureScript: string;
+  memoryFootprintEstimate: string;
+  concurrencyModel: string;
+  complexityRating: string;
+}
+
+export interface SimulatedLog {
+  id: string;
+  time: string;
+  source: string;
+  type: 'info' | 'success' | 'warn' | 'error' | 'data';
+  message: string;
+}
+
+export interface ScriptProject {
+  id: string;
+  title: string;
+  titleEn: string;
+  description: string;
+  languages: ProgrammingLanguage[] | string[];
+  paradigm: FusionParadigm | string;
+  prompt: string;
+  createdAt: number;
+  architectureSummary: string;
+  dataFlowDiagram: string;
+  communicationMechanism: string;
+  files: ScriptFile[];
+  executionGuide: ExecutionGuide;
+  benchmarkStats: BenchmarkStats;
+  simulatedLogs: SimulatedLog[];
+}
+
+export interface ScriptGenerationConfig {
+  userPrompt: string;
+  selectedLanguages: ProgrammingLanguage[];
+  fusionParadigm: FusionParadigm;
+  autoSelectLanguages: boolean;
+  autoSelectParadigm: boolean;
+  architectureTier: 'standard' | 'advanced' | 'enterprise' | 'extreme_high_performance';
+  includeDockerfile: boolean;
+  includeMakefile: boolean;
+  includeErrorHandling: boolean;
+  includeLogging: boolean;
+  bilingualComments: boolean;
+}
+
+export interface PresetScript {
+  id: string;
+  titleAr: string;
+  titleEn: string;
+  badge: string;
+  descriptionAr: string;
+  languages: ProgrammingLanguage[];
+  paradigm: FusionParadigm;
+  prompt: string;
+}
+
+export interface LanguageInfo {
+  id: ProgrammingLanguage;
+  name: string;
+  nameAr: string;
+  color: string;
+  badgeBg: string;
+  icon: string;
+  extension: string;
+  category: 'Data' | 'Web' | 'Shell' | 'System' | 'Scripting';
+}
+
+export interface FusionParadigmInfo {
+  id: FusionParadigm;
+  name: string;
+  nameAr: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  speedRating: number;
+  complexityRating: number;
+  iconName: string;
+  bestUseCases: string[];
+}
+
+// ==============================================================================
+// 2. Gold OrderFlow Pro Types
+// ==============================================================================
+
+export type Timeframe = "1m" | "3m" | "5m" | "15m" | "1h" | "4h";
+
+export type ViewMode = "footprint" | "heatmap" | "cvd" | "tradingview";
+
+export type SidebarTab = "liquidity" | "correlation" | "dom" | "tape";
+
+export type MobileTab = "chart" | "liquidity" | "correlation" | "dom" | "tape";
 
 export interface GoldQuote {
   symbol: string;
@@ -26,15 +152,15 @@ export interface GoldQuote {
   source: string;
 }
 
-export interface FootprintLevel {
+export interface PriceClusterLevel {
   price: number;
-  bidQty: number;      // Aggressive Sell hitting bid
-  askQty: number;      // Aggressive Buy lifting ask
+  bidQty: number;
+  askQty: number;
   totalQty: number;
-  delta: number;       // askQty - bidQty
-  isAskImbalance: boolean; // Ask > Bid * ImbalanceRatio
-  isBidImbalance: boolean; // Bid > Ask * ImbalanceRatio
-  isPOC: boolean;      // Point of Control within the candle
+  delta: number;
+  isAskImbalance: boolean;
+  isBidImbalance: boolean;
+  isPOC: boolean;
 }
 
 export interface FootprintBar {
@@ -48,275 +174,132 @@ export interface FootprintBar {
   cumulativeDelta: number;
   minDelta: number;
   maxDelta: number;
-  levels: FootprintLevel[];
+  levels: PriceClusterLevel[];
   pocPrice: number;
-  vwap?: number;
 }
 
-export interface DepthLevel {
+export interface LiquidityZone {
+  id: string;
+  type: "BSL" | "SSL" | "FVG_BULL" | "FVG_BEAR";
+  name: string;
+  nameAr: string;
+  priceTop: number;
+  priceBottom: number;
+  status: "untested" | "swept" | "mitigated";
+  strength: "critical" | "high" | "medium";
+  volumeCluster: number;
+  description: string;
+}
+
+export interface TradeItem {
+  id: string;
+  price: number;
+  qty: number;
+  side: "buy" | "sell";
+  time: number;
+  isWhale: boolean;
+}
+
+export interface DOMLevel {
   price: number;
   qty: number;
   total: number;
   percent: number;
 }
 
-export interface MarketDepth {
-  bids: DepthLevel[];
-  asks: DepthLevel[];
+export interface DOMDepthData {
+  bids: DOMLevel[];
+  asks: DOMLevel[];
   maxQty: number;
 }
 
-export interface TapeTrade {
-  id: string;
-  price: number;
-  qty: number;
-  side: 'buy' | 'sell';
-  time: number;
-  isWhale: boolean;
+export interface AppSettings {
+  imbalanceRatio: number;
+  tickSize: number;
+  clusterMode: "bidAsk" | "delta" | "volume";
+  showImbalances: boolean;
+  showPOC: boolean;
+  soundAlerts: boolean;
+  whaleThreshold: number;
+  heatmapIntensity: number;
+  customGeminiApiKey?: string;
+  aiModel?: string;
+  goldDataProvider?: "binance_spot" | "binance_futures" | "tradingview";
+  streamSpeed?: "realtime" | "fast" | "normal";
 }
 
-export type LiquidityType = 'BSL' | 'SSL' | 'FVG_BULL' | 'FVG_BEAR' | 'ORDER_BLOCK';
-
-export interface LiquidityZone {
-  id: string;
-  type: LiquidityType;
-  name: string;
-  nameAr: string;
-  priceTop: number;
-  priceBottom: number;
-  status: 'untested' | 'swept' | 'mitigated';
-  strength: 'high' | 'medium' | 'critical';
-  volumeCluster: number;
-  description: string;
-}
-
-// === 1. Futures Flow Types ===
-export interface LiquidationCluster {
-  price: number;
-  type: 'long_liq' | 'short_liq';
-  estimatedVolumeOz: number;
-  intensity: number; // 0-100%
-  description: string;
-}
-
-export interface FuturesFlowData {
-  openInterestOz: number;
-  oiChangePercent24h: number;
-  fundingRate: number;              // e.g. +0.012%
-  predictedFundingRate: number;
-  nextFundingCountdown: string;
-  longAccountPercent: number;       // e.g. 58.4%
-  shortAccountPercent: number;      // e.g. 41.6%
-  longShortRatio: number;           // e.g. 1.40
-  totalLongLiquidations24hUsd: number;
-  totalShortLiquidations24hUsd: number;
-  vwap: number;
-  vwapBandUpper1: number;
-  vwapBandLower1: number;
-  vwapBandUpper2: number;
-  vwapBandLower2: number;
-  liquidationClusters: LiquidationCluster[];
-  futuresCvdTrend: 'Aggressive Long Accumulation' | 'Short Squeeze Pressure' | 'Passive Absorption' | 'Distribution';
-}
-
-// === 2. Options Flow Types ===
-export interface OptionStrikeData {
-  strike: number;
-  callOI: number;
-  putOI: number;
-  callVolume: number;
-  putVolume: number;
-  netGex: number; // Gamma Exposure in $M
-}
-
-export interface OptionSweepTrade {
-  id: string;
-  timestamp: number;
-  strike: number;
-  expiration: string;
-  contractType: 'CALL' | 'PUT';
-  action: 'SWEEP' | 'BLOCK' | 'SPLIT';
-  sentiment: 'BULLISH' | 'BEARISH';
-  premiumUsd: number;
-  contracts: number;
-  impliedVolatility: number;
-  spotPriceAtTrade: number;
-  underlyingGoldEqOz: number;
-}
-
-export interface OptionsFlowData {
-  putCallRatio: number;              // e.g. 0.68
-  pcrSentiment: 'شديد الإيجابية (Bullish)' | 'محايد (Neutral)' | 'سلبي حذر (Bearish)';
-  maxPainStrike: number;             // e.g. 2740.00
-  totalCallOpenInterest: number;
-  totalPutOpenInterest: number;
-  netGammaExposure: number;          // e.g. +$184M (Positive gamma = Low volatility pinning, Negative gamma = High volatility explosive breakout)
-  gammaRegime: 'Positive Gamma (Pinning/Mean Reversion)' | 'Negative Gamma (High Volatility/Breakout)';
-  callResistanceWall: number;        // Call wall (dealers short call hedge)
-  putSupportFloor: number;           // Put floor (dealers short put hedge)
-  strikes: OptionStrikeData[];
-  institutionalSweeps: OptionSweepTrade[];
-}
-
-// === 3. Order Clusters & Limit Walls ===
-export interface OrderCluster {
-  id: string;
-  type: 'BUY_WALL' | 'SELL_WALL' | 'HVN' | 'LVN';
-  priceLow: number;
-  priceHigh: number;
-  centerPrice: number;
-  totalLots: number;
-  estimatedValueUsd: number;
-  strength: 'CRITICAL' | 'STRONG' | 'MODERATE';
-  distanceUsd: number;
-  pipsDistance: number;
-  isAboveCurrentPrice: boolean;
-  orderCount: number;
-  description: string;
-}
-
-// === 4. High-Precision Confluence Signal Engine ===
-export interface ConfluenceFactor {
-  name: string;
-  signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
-  weightPercent: number;
-  detail: string;
-}
-
-export interface ConfluenceTradeSetup {
-  id: string;
-  symbol: string;
-  type: 'BUY_LONG' | 'SELL_SHORT';
-  grade: 'A+ المؤسسية الفائقة' | 'A عالية الاحتمالية' | 'B جيدة';
-  confluenceScore: number; // 0 to 100
-  winProbability: number; // estimated historical win rate % e.g. 94.5%
-  sessionContext?: string; // e.g. Golden Overlap / London Session
-  liquidityTier?: 'PRIME' | 'HIGH' | 'MODERATE';
-  entryRange: [number, number];
-  stopLoss: number;
-  stopLossProtection: string;
-  tp1: number;
-  tp2: number;
-  tp3: number;
-  riskRewardRatio: string;
-  status: 'ACTIVE' | 'TRIGGERED' | 'WAITING_RETEST';
-  reasons: string[];
-  confluenceFactors: ConfluenceFactor[];
-  timestamp: number;
-}
-
-export interface SmartPriceLevelAction {
-  actionType: 'BUY' | 'SELL';
-  actionNameAr: string;
-  triggerConditionAr: string;
-  entryPrice: number;
-  stopLoss: number;
-  target1: number;
-  target2: number;
+export interface SmartDualScenario {
+  action: "BUY" | "SELL";
+  titleAr: string;
+  conditionAr: string;
+  triggerCondition: string;
+  entryZone: string;
+  takeProfit1: string;
+  takeProfit2: string;
+  stopLoss: string;
   riskReward: string;
+  rationaleAr: string;
+  probabilityScore: number;
+}
+
+export interface DualSmartLevel {
+  id: string;
+  levelPrice: number;
+  levelType: "upper_buy" | "lower_sell";
+  titleAr: string;
+  badgeLabel: string;
+  distanceFromPrice: number;
+  distancePips: number;
+  isAboveCurrent: boolean;
+  volumeClusterEstimated: number;
   descriptionAr: string;
+  // Scenario 1: On break / breach
+  breakScenario: SmartDualScenario;
+  // Scenario 2: On rejection / bounce
+  bounceScenario: SmartDualScenario;
 }
 
-export interface SmartPriceLevel {
-  id: string;
-  type: 'SMART_BUY' | 'SMART_SELL';
-  levelName: string;
-  levelNameAr: string;
-  price: number;
-  priceRange: [number, number];
-  confluenceScore: number; // 0-100%
-  tier: 'TIER_1_SNIPER' | 'TIER_2_ABSORPTION' | 'TIER_3_DEEP_DEFENSE';
-  tierLabelAr: string;
-  orderWallVolume: number; // in lots
-  orderWallType: 'LIMIT_BUY_WALL' | 'LIMIT_SELL_WALL' | 'ICEBERG_ABSORPTION' | 'GAMMA_WALL';
-  technicalCatalystAr: string;
-  suggestedStopLoss: number;
-  invalidationTrigger: string;
-  projectedTarget1: number;
-  projectedTarget2: number;
-  riskReward: string;
-  status: 'ACTIVE_PRIME' | 'APPROACHING' | 'RETESTED' | 'INVALIDATED';
-  distanceToCurrentUsd: number;
-  distancePercent: number;
-
-  // Flexible Dual-Action Features (مرونة وقبول الاتجاهين عند الكسر أو عدم الكسر/الارتداد)
-  isFlexibleDual?: boolean;
-  positionVsCurrent?: 'ABOVE' | 'BELOW'; // هل المستوى أعلى أم أسفل السعر اللحظي
-  breakoutAction?: SmartPriceLevelAction; // عند الاختراق والكسر
-  rejectionAction?: SmartPriceLevelAction; // عند عدم الكسر والارتداد
-  dualBehaviorSummaryAr?: string;
-}
-
-export interface CorrelatedAsset {
+export interface CorrelationAsset {
   symbol: string;
   name: string;
   nameAr: string;
   price: number;
   change24h: number;
   changePercent24h: number;
-  correlationCoeff: number; // -1.00 to +1.00
-  correlationType: 'STRONG_INVERSE' | 'MODERATE_INVERSE' | 'STRONG_POSITIVE' | 'MODERATE_POSITIVE' | 'NEUTRAL';
-  correlationLabelAr: string;
-  institutionalWeight: number; // e.g. 35% for DXY
-  divergenceSignal: 'BULLISH_LEAD' | 'BEARISH_PRESSURE' | 'CONVERGENT_NORMAL' | 'ANOMALOUS_DECOUPLING';
-  divergenceSignalAr: string;
-  institutionalInsightAr: string;
-  sparkline: number[];
-  category: 'CURRENCY' | 'YIELD' | 'COMMODITY' | 'VOLATILITY';
+  correlationCoef: number; // e.g. -0.91 for DXY, +0.88 for Silver
+  correlationType: "inverse" | "direct";
+  goldImpact: "bullish" | "bearish" | "neutral";
+  impactDescriptionAr: string;
+  historicalTrend: number[];
 }
 
-export interface MacroCorrelationAnalysis {
-  overallGoldAlignmentScore: number; // 0 - 100%
-  overallBias: 'BULLISH_TAILWIND' | 'BEARISH_HEADWIND' | 'NEUTRAL_BALANCED';
-  overallBiasAr: string;
-  dxyPressureIndex: number; // 0 - 100
-  yieldsPressureIndex: number;
-  institutionalSummaryAr: string;
-  divergenceAlert: string | null;
-  assets: CorrelatedAsset[];
+export interface MacroCorrelationReport {
   timestamp: number;
+  alignmentScore: number; // 0 - 100
+  overallSentiment: "bullish_tailwinds" | "bearish_headwinds" | "mixed_divergence";
+  overallSentimentAr: string;
+  dxyAnalysisAr: string;
+  divergenceDetected: boolean;
+  divergenceAlertAr?: string;
+  assets: CorrelationAsset[];
+  institutionalAdviceAr: string;
 }
 
-export interface MicroStructureTelemetry {
-  cvdDivergence: string;
-  absorptionState: string;
-  gammaFlipStrike: number;
-  whaleWallSupport: number;
-  whaleWallResistance: number;
-  imbalanceRatioAskBid: number;
-  vwapDeviationBand: string;
-}
-
-export interface MarketScenario {
-  name: string;
-  nameAr: string;
-  probability: number; // e.g. 75%
-  type: 'PRIMARY' | 'ALTERNATIVE';
-  thesis: string;
-  triggerCondition: string; // شرط التفعيل اللحظي
-  invalidationLevel: string; // مستوى الإلغاء ونفي السيناريو
-  targetPathway: string[]; // مسار السعر المتوقع خطوة بخطوة
-  recommendedAction: string;
-}
-
-export interface AIAnalysisResult {
+export interface AiAnalysisResult {
   bias: string;
   confidenceScore: number;
   summary: string;
   liquidityAnalysis: string;
   orderFlowInsight: string;
-  futuresFlowInsight?: string;
-  optionsFlowInsight?: string;
-  orderClustersInsight?: string;
-  volumeProfileInsight?: string;
-  // Advanced Scenario Detection:
-  primaryScenario?: MarketScenario;
-  alternativeScenario?: MarketScenario;
-  scenarioAnalysisDetails?: string;
-  // Smart Buy & Smart Sell Levels Detection:
-  smartBuyLevels?: SmartPriceLevel[];
-  smartSellLevels?: SmartPriceLevel[];
-  microStructure?: MicroStructureTelemetry;
+  dualSmartLevels?: {
+    upperLevel: DualSmartLevel;
+    lowerLevel: DualSmartLevel;
+  };
+  macroCorrelation?: {
+    dxyImpact: string;
+    macroAlignment: string;
+    silverConfirmation: string;
+  };
   setup: {
     type: string;
     entryZone: string;
@@ -326,107 +309,5 @@ export interface AIAnalysisResult {
     riskRewardRatio: string;
   };
   keyAdvice: string;
-}
-
-export interface TerminalSettings {
-  imbalanceRatio: number;      // e.g. 3.0 (300%)
-  tickSize: number;            // $0.50 or $1.00
-  clusterMode: 'bidAsk' | 'delta' | 'volume';
-  showImbalances: boolean;
-  showPOC: boolean;
-  soundAlerts: boolean;
-  whaleThreshold: number;      // e.g. 5.0 lots
-  heatmapIntensity: number;    // 1 to 5
-  manualPriceOffset: number;   // Calibration offset in USD (e.g. +1635.73 to bridge PAXG to live gold spot)
-  priceCalibrationMode: 'auto_spot' | 'paxg_pure' | 'custom_offset'; // Alignment mode
-  minConfluenceScore: number;  // Filtering threshold: only show 100% / A+ ultra-strict setups
-  enforceMarketHoursOnly: boolean; // Do not issue signals when gold market is closed or weekend
-  onlyHighLiquiditySessions: boolean; // Restrict signals to high volume sessions (London, NY, Overlap)
-  strictHighWinRateOnly: boolean; // Suppress any setup if estimated win rate is below 90%
-}
-
-// === TrendSpider & Bookmap / Exocharts Institutional Engine Types ===
-export interface TrendSpiderPattern {
-  id: string;
-  name: string;
-  nameAr: string;
-  type: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
-  historicalWinRate: number; // e.g. 88.5%
-  sampleSize: number; // e.g. 142 historical trades in gold
-  status: 'CONFIRMED' | 'FORMING' | 'BREAKOUT';
-  keyLevel: number;
-  targetPrice: number;
-  invalidationPrice: number;
-  description: string;
-}
-
-export interface BookmapStopHuntSignal {
-  id: string;
-  type: 'BULL_TRAP_STOP_RUN' | 'BEAR_TRAP_STOP_RUN' | 'ICEBERG_ABSORPTION' | 'SPOOF_LIQUIDITY_PULL';
-  titleAr: string;
-  priceLevel: number;
-  volumeSweptOz: number;
-  smartMoneyAction: string;
-  trappedTraders: 'LONG_RETAIL' | 'SHORT_RETAIL';
-  certaintyScore: number; // e.g. 98%
-  timestamp: number;
-}
-
-// === 5. Mock Order Simulation Types ===
-export interface SimulatedOrder {
-  id: string;
-  symbol: string;
-  type: 'BUY_LONG' | 'SELL_SHORT';
-  orderType: 'MARKET' | 'LIMIT';
-  entryPrice: number;
-  lotSize: number;
-  stopLoss: number;
-  tp1: number;
-  tp2: number;
-  openTime: number;
-  status: 'OPEN' | 'CLOSED';
-  closePrice?: number;
-  closeTime?: number;
-  pnlUsd?: number;
-  slZoneReason?: string;
-  tpZoneReason?: string;
-}
-
-export interface SimulatedTradeStats {
-  totalTrades: number;
-  winRate: number;
-  totalPnlUsd: number;
-  activePositions: number;
-}
-
-// === 6. Volume Profile (Fixed Range) Types ===
-export interface VolumeProfileLevel {
-  price: number;
-  volume: number;
-  bidVolume: number;
-  askVolume: number;
-  delta: number;
-  percentage: number;
-  isPOC: boolean;      // Point of Control (Highest Volume Node)
-  isVAH: boolean;      // Value Area High boundary
-  isVAL: boolean;      // Value Area Low boundary
-  isInValueArea: boolean; // Inside 70% Value Area
-  nodeType: 'HVN' | 'LVN' | 'NORMAL'; // High Volume Node vs Low Volume Node
-}
-
-export interface VolumeProfileData {
-  rangeType: 'SESSION' | 'FIXED_VISIBLE' | 'LAST_20' | 'LAST_10';
-  pocPrice: number;
-  pocVolume: number;
-  vahPrice: number;    // Value Area High (70% value area)
-  valPrice: number;    // Value Area Low
-  totalVolume: number;
-  totalDelta: number;
-  totalBuyVolume: number;
-  totalSellVolume: number;
-  levels: VolumeProfileLevel[];
-  hvnNodes: VolumeProfileLevel[]; // High Volume Nodes (Support/Resistance levels)
-  lvnNodes: VolumeProfileLevel[]; // Low Volume Nodes (Fast travel / Slippage zones)
-  summaryText: string;
 }
 

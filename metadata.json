@@ -1,6 +1,6 @@
 {
-  "name": "XAU/USD Order Flow & Liquidity Terminal",
-  "description": "منصة احترافية متطورة لتحليل الذهب XAU/USD: كاشف السيناريوهات المتطورة للذكاء الاصطناعي، ومستويات Smart Buy & Sell، وتدفق الأوامر الفوت برنت، وتدفق الفيوتشرز، وعقود الخيارات وجدران الليمت المعلقة مع فلترة أوقات الجلسات والسيولة العالية.",
+  "name": "Gold OrderFlow Pro | منصة تحليل تدفق أوامر الذهب اللحظية",
+  "description": "منصة احترافية لمراقبة وتحليل تدفق أوامر الذهب (XAU/USD) اللحظية بشموع الفوت برنت (Footprint Chart)، وخريطة السيولة الحرارية (Liquidity Heatmap)، وعمق السوق (DOM Ladder)، ورادار صيد السيولة المؤسسية (BSL/SSL Sweeps).",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

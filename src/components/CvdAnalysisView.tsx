@@ -1,6 +1,6 @@
-import React from 'react';
-import { FootprintBar } from '../types';
-import { Activity, ArrowUpRight, ArrowDownRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import React from "react";
+import { Activity } from "lucide-react";
+import { FootprintBar } from "../types";
 
 interface CvdAnalysisViewProps {
   bars: FootprintBar[];
@@ -15,24 +15,19 @@ export const CvdAnalysisView: React.FC<CvdAnalysisViewProps> = ({ bars, currentP
 
   const totalDelta = bars.reduce((acc, b) => acc + b.delta, 0);
   const totalVolume = bars.reduce((acc, b) => acc + b.volume, 0);
-  const deltaPercent = totalVolume > 0 ? (totalDelta / totalVolume) * 100 : 0;
+  const deltaRatioPct = totalVolume > 0 ? (totalDelta / totalVolume) * 100 : 0;
 
-  // Absorption Detection
-  const priceHigher = lastBar.close > prevBar.close;
-  const deltaLower = lastBar.delta < prevBar.delta;
-  const priceLower = lastBar.close < prevBar.close;
-  const deltaHigher = lastBar.delta > prevBar.delta;
+  const priceUp = lastBar.close > prevBar.close;
+  const deltaDown = lastBar.delta < prevBar.delta;
+  const priceDown = lastBar.close < prevBar.close;
+  const deltaUp = lastBar.delta > prevBar.delta;
 
-  let absorptionType: 'bullish' | 'bearish' | 'neutral' = 'neutral';
-  if (priceLower && deltaHigher) {
-    absorptionType = 'bullish'; // Institutional passive buyers absorbing aggressive sellers
-  } else if (priceHigher && deltaLower) {
-    absorptionType = 'bearish'; // Institutional passive sellers absorbing aggressive buyers
+  let absorption: "bullish" | "bearish" | "neutral" = "neutral";
+  if (priceDown && deltaUp) {
+    absorption = "bullish";
+  } else if (priceUp && deltaDown) {
+    absorption = "bearish";
   }
-
-  // Value Area calculation from visible bars
-  const prices = bars.flatMap((b) => b.levels.map((l) => ({ price: l.price, volume: l.totalQty })));
-  prices.sort((a, b) => a.price - b.price);
 
   const vah = Number((currentPrice + 4.5).toFixed(2));
   const val = Number((currentPrice - 5.0).toFixed(2));
@@ -40,20 +35,21 @@ export const CvdAnalysisView: React.FC<CvdAnalysisViewProps> = ({ bars, currentP
 
   return (
     <div className="flex flex-col h-full bg-[#0e121a] rounded-xl border border-slate-800/80 p-4 overflow-y-auto space-y-4 select-none">
-      {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800">
-          <span className="text-[11px] text-slate-400 block mb-1">صافي دلتا الحجم التراكمي (CVD)</span>
+          <span className="text-[11px] text-slate-400 block mb-1">
+            صافي دلتا الحجم التراكمي (CVD)
+          </span>
           <div className="flex items-center gap-2">
             <span
               className={`text-lg font-bold font-['JetBrains_Mono'] ${
-                totalDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                totalDelta >= 0 ? "text-emerald-400" : "text-rose-400"
               }`}
             >
-              {totalDelta >= 0 ? '+' : ''}
+              {totalDelta >= 0 ? "+" : ""}
               {totalDelta.toFixed(1)} Oz
             </span>
-            <span className="text-xs text-slate-400 font-mono">({deltaPercent.toFixed(1)}%)</span>
+            <span className="text-xs text-slate-400 font-mono">({deltaRatioPct.toFixed(1)}%)</span>
           </div>
         </div>
 
@@ -79,14 +75,13 @@ export const CvdAnalysisView: React.FC<CvdAnalysisViewProps> = ({ bars, currentP
         </div>
       </div>
 
-      {/* Absorption & Institutional Divergence Signal */}
       <div
         className={`p-4 rounded-xl border flex items-start gap-3 ${
-          absorptionType === 'bullish'
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
-            : absorptionType === 'bearish'
-            ? 'bg-rose-500/10 border-rose-500/30 text-rose-200'
-            : 'bg-slate-900/80 border-slate-800 text-slate-300'
+          absorption === "bullish"
+            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
+            : absorption === "bearish"
+            ? "bg-rose-500/10 border-rose-500/30 text-rose-200"
+            : "bg-slate-900/80 border-slate-800 text-slate-300"
         }`}
       >
         <div className="p-2 rounded-lg bg-slate-900/70 shrink-0">
@@ -94,23 +89,22 @@ export const CvdAnalysisView: React.FC<CvdAnalysisViewProps> = ({ bars, currentP
         </div>
         <div className="space-y-1">
           <h3 className="font-bold text-sm text-white">
-            {absorptionType === 'bullish'
-              ? '🟢 رصد امتصاص شرائي مؤسسي (Bullish Absorption Detected)'
-              : absorptionType === 'bearish'
-              ? '🔴 رصد امتصاص بيعي مؤسسي (Bearish Absorption Detected)'
-              : '⚖️ توازن تدفق الأوامر الحالي (Order Flow Equilibrium)'}
+            {absorption === "bullish"
+              ? "🟢 رصد امتصاص شرائي مؤسسي (Bullish Absorption Detected)"
+              : absorption === "bearish"
+              ? "🔴 رصد امتصاص بيعي مؤسسي (Bearish Absorption Detected)"
+              : "⚖️ توازن تدفق الأوامر الحالي (Order Flow Equilibrium)"}
           </h3>
           <p className="text-xs leading-relaxed text-slate-300">
-            {absorptionType === 'bullish'
-              ? 'يقوم المشترون ذوو السيولة الضخمة (Passive Limit Buyers) بامتصاص أوامر البيع الماركت بقوة دون السماح للسعر بالهبوط. إشارة قوية لاحتمال انعكاس صاعد سريع.'
-              : absorptionType === 'bearish'
-              ? 'يقوم البائعون المؤسسيون (Passive Limit Sellers) بامتصاص أوامر الشراء الماركت، مما يشير إلى نفاذ قوة المشترين واحتمال تصحيح هابط.'
-              : 'لا يوجد دايفرجنس حاد بين حركة السعر ودلتا الحجم في الشمعة الأخيرة، السوق يتحرك بتوافق نسبي بين أوامر الماركت والليمت.'}
+            {absorption === "bullish"
+              ? "يقوم المشترون ذوو السيولة الضخمة (Passive Limit Buyers) بامتصاص أوامر البيع الماركت بقوة دون السماح للسعر بالهبوط. إشارة قوية لاحتمال انعكاس صاعد سريع."
+              : absorption === "bearish"
+              ? "يقوم البائعون المؤسسيون (Passive Limit Sellers) بامتصاص أوامر الشراء الماركت، مما يشير إلى نفاذ قوة المشترين واحتمال تصحيح هابط."
+              : "لا يوجد دايفرجنس حاد بين حركة السعر ودلتا الحجم في الشمعة الأخيرة، السوق يتحرك بتوافق نسبي بين أوامر الماركت والليمت."}
           </p>
         </div>
       </div>
 
-      {/* Historical Bars Delta Breakdown Table */}
       <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900/50">
         <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 text-xs font-bold text-slate-200 flex justify-between">
           <span>جدول تفصيل دلتا الشموع الأخيرة</span>
@@ -130,24 +124,32 @@ export const CvdAnalysisView: React.FC<CvdAnalysisViewProps> = ({ bars, currentP
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/40">
-              {bars.slice(-8).reverse().map((b, i) => {
-                const isPos = b.delta >= 0;
-                return (
-                  <tr key={i} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-1.5 px-3 text-slate-400">
-                      {new Date(b.time).toLocaleTimeString('ar-EG', { hour12: false })}
-                    </td>
-                    <td className="py-1.5 px-3 text-slate-300">${b.open.toFixed(2)}</td>
-                    <td className="py-1.5 px-3 text-white font-semibold">${b.close.toFixed(2)}</td>
-                    <td className="py-1.5 px-3 text-amber-300">{b.volume.toFixed(1)}</td>
-                    <td className={`py-1.5 px-3 font-bold ${isPos ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {isPos ? '+' : ''}{b.delta.toFixed(1)}
-                    </td>
-                    <td className="py-1.5 px-3 text-sky-300">{b.cumulativeDelta.toFixed(1)}</td>
-                    <td className="py-1.5 px-3 text-amber-400">${b.pocPrice.toFixed(2)}</td>
-                  </tr>
-                );
-              })}
+              {bars
+                .slice(-8)
+                .reverse()
+                .map((b, idx) => {
+                  const isDeltaPos = b.delta >= 0;
+                  return (
+                    <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-1.5 px-3 text-slate-400">
+                        {new Date(b.time).toLocaleTimeString("ar-EG", { hour12: false })}
+                      </td>
+                      <td className="py-1.5 px-3 text-slate-300">${b.open.toFixed(2)}</td>
+                      <td className="py-1.5 px-3 text-white font-semibold">${b.close.toFixed(2)}</td>
+                      <td className="py-1.5 px-3 text-amber-300">{b.volume.toFixed(1)}</td>
+                      <td
+                        className={`py-1.5 px-3 font-bold ${
+                          isDeltaPos ? "text-emerald-400" : "text-rose-400"
+                        }`}
+                      >
+                        {isDeltaPos ? "+" : ""}
+                        {b.delta.toFixed(1)}
+                      </td>
+                      <td className="py-1.5 px-3 text-sky-300">{b.cumulativeDelta.toFixed(1)}</td>
+                      <td className="py-1.5 px-3 text-amber-400">${b.pocPrice.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
