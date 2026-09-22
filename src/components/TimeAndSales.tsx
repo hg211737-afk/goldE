@@ -59,7 +59,7 @@ export const TimeAndSales: React.FC<TimeAndSalesProps> = ({ trades }) => {
                   {new Date(trade.time).toLocaleTimeString("en-GB", { hour12: false })}
                 </span>
                 <span className={`font-semibold ${isBuy ? "text-emerald-400" : "text-rose-400"}`}>
-                  ${trade.price.toFixed(2)}
+                  ${trade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3 })}
                 </span>
                 <span className="text-slate-200 flex items-center justify-center gap-1">
                   {trade.qty.toFixed(2)}

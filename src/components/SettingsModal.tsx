@@ -277,13 +277,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Model Selection */}
               <div className="space-y-2 pt-3 border-t border-slate-800">
-                <label className="text-slate-300 font-semibold block">نموذج الذكاء الاصطناعي المفضل للتحليل:</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className="text-slate-300 font-semibold block">نموذج الذكاء الاصطناعي المعتمد للتحليل:</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
-                    { id: "gemini-3.6-flash", label: "Gemini 3.6 Flash", desc: "الأحدث وفائق السرعة (موصى به)" },
-                    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", desc: "نموذج مستقر وعالي الدقة" },
-                    { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash", desc: "استجابة سريعة لبيانات السوق" },
-                    { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", desc: "كفاءة عالية وموثوقة" },
+                    { id: "gemini-3.6-flash", label: "Gemini 3.6 Flash", desc: "النموذج المؤسسي الأحدث وفائق السرعة (موصى به)" },
+                    { id: "gemini-3.6-pro", label: "Gemini 3.6 Pro", desc: "استدلال وتحليل استراتيجي عميق لمحافظ الحيتان" },
                   ].map((m) => {
                     const isSelected = (settings.aiModel || "gemini-3.6-flash") === m.id;
                     return (

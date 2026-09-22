@@ -10,9 +10,12 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { GoldQuote, Timeframe, ViewMode } from "../types";
+import { PWAInstallButton } from "./PWAInstallButton";
 
 interface HeaderProps {
   quote: GoldQuote;
+  selectedSymbol?: string;
+  onSymbolChange?: (sym: string) => void;
   timeframe: Timeframe;
   onTimeframeChange: (tf: Timeframe) => void;
   viewMode: ViewMode;
@@ -64,15 +67,15 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/20 to-yellow-600/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold shadow-sm">
-              <span className="text-sm font-['JetBrains_Mono']">Au</span>
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/25 to-yellow-600/15 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold shadow-sm">
+              <span className="text-base font-['JetBrains_Mono']">Au</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-bold text-base tracking-tight text-white flex items-center gap-1.5 font-['JetBrains_Mono']">
                   XAU/USD
-                  <span className="text-xs font-normal text-amber-400/90 font-['Cairo'] bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                    الذهب الفوري
+                  <span className="text-[11px] font-normal text-amber-400/90 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                    الذهب (Gold Spot)
                   </span>
                 </h1>
                 <div
@@ -81,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
                       ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
                       : "text-amber-400 bg-amber-500/10 border-amber-500/20"
                   }`}
-                  title={connectionStatus?.source || "بث فوري مباشر عبر WebSocket"}
+                  title={connectionStatus?.source || "بث فوري مباشر عبر Binance WebSocket (XAU/USD)"}
                 >
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
@@ -94,7 +97,9 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="hidden md:inline">بث حي فوري</span>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400">Order Flow & Liquidity Terminal</p>
+              <p id="source" className="text-[11px] text-slate-400 font-mono">
+                {connectionStatus?.source || "BINANCE:PAXGUSDT (XAU/USD Live Spot Gold)"}
+              </p>
             </div>
           </div>
 
@@ -107,8 +112,8 @@ export const Header: React.FC<HeaderProps> = ({
                 : "bg-slate-900/90 border-slate-750 text-white"
             }`}
           >
-            <div className="text-xl sm:text-2xl font-bold tracking-tight">
-              ${quote.price.toFixed(3)}
+            <div id="price" className="text-xl sm:text-2xl font-bold tracking-tight" title={`السعر بدقة كاملة: $${quote.price}`}>
+              ${quote.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
             </div>
             <div className="flex flex-col text-[11px] leading-tight">
               <span className={`font-semibold flex items-center ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>
@@ -249,6 +254,8 @@ export const Header: React.FC<HeaderProps> = ({
             <Cpu className={`w-4 h-4 ${isAiLoading ? "animate-spin" : ""}`} />
             <span>تحليل الذكاء المؤسسي</span>
           </button>
+
+          <PWAInstallButton />
 
           <button
             onClick={onOpenSettingsModal}

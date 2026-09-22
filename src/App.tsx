@@ -46,21 +46,22 @@ import { TimeAndSales } from "./components/TimeAndSales";
 import { CorrelationWidget } from "./components/CorrelationWidget";
 import { AiAnalysisModal } from "./components/AiAnalysisModal";
 import { SettingsModal } from "./components/SettingsModal";
+import { OfflineNotice } from "./components/OfflineNotice";
 
 export function App() {
   const [quote, setQuote] = useState<GoldQuote>({
     symbol: "XAU/USD",
-    price: 2742.685,
-    bid: 2742.450,
-    ask: 2742.920,
-    spread: 0.470,
-    high24h: 2758.150,
-    low24h: 2731.500,
-    change24h: 11.120,
-    changePercent24h: 0.41,
-    volume24h: 38492.4,
+    price: 4360.00,
+    bid: 4359.75,
+    ask: 4360.25,
+    spread: 0.50,
+    high24h: 4385.00,
+    low24h: 4340.00,
+    change24h: 18.50,
+    changePercent24h: 0.42,
+    volume24h: 5840.0,
     timestamp: Date.now(),
-    source: "Binance PAXG (Gold Spot 1:1)",
+    source: "BINANCE:PAXGUSDT (XAU/USD Live Spot Gold)",
   });
 
   const [depth, setDepth] = useState<DOMDepthData>({ bids: [], asks: [], maxQty: 25 });
@@ -125,31 +126,52 @@ export function App() {
     return getMacroCorrelationData(quote.price);
   }, [quote.price]);
 
+  const audioCtxRef = React.useRef<AudioContext | null>(null);
+
   const playSweepSound = useCallback(() => {
-    if (settings.soundAlerts) {
+    if (settings.soundAlerts && typeof window !== "undefined") {
       try {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) return;
+
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new AudioContextClass();
+        }
+        const ctx = audioCtxRef.current;
+        if (ctx.state === "suspended") {
+          ctx.resume().catch(() => {});
+        }
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
         osc.type = "sine";
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        gain.connect(ctx.destination);
         osc.start();
-        osc.stop(audioCtx.currentTime + 0.3);
+        osc.stop(ctx.currentTime + 0.3);
       } catch {
         // AudioContext may be restricted by autoplay policy
       }
     }
   }, [settings.soundAlerts]);
 
+  const liquidityZonesRef = React.useRef<LiquidityZone[]>([]);
+  liquidityZonesRef.current = liquidityZones;
+
+  const settingsRef = React.useRef<AppSettings>(settings);
+  settingsRef.current = settings;
+
+  const playSweepSoundRef = React.useRef(playSweepSound);
+  playSweepSoundRef.current = playSweepSound;
+
   const pollMarketData = useCallback(async () => {
     let data: any = null;
     try {
-      const res = await fetch(`/api/gold/live?interval=${timeframe}`);
+      const res = await fetch(`/api/gold/live?symbol=PAXGUSDT&interval=${timeframe}`);
       if (res.ok) {
         data = await res.json();
       }
@@ -163,20 +185,25 @@ export function App() {
 
     if (data) {
       try {
-        if (data.price) {
-          setQuote((prev) => ({
-            ...prev,
-            price: data.price,
-            bid: data.bid || data.price - 0.2,
-            ask: data.ask || data.price + 0.2,
-            spread: data.spread || 0.4,
-            high24h: data.high24h || data.price + 15,
-            low24h: data.low24h || data.price - 15,
-            change24h: data.change24h || 0,
-            changePercent24h: data.changePercent24h || 0,
-            volume24h: data.volume24h || 1200,
-            timestamp: data.timestamp || Date.now(),
-          }));
+        if (data.price !== undefined && data.price !== null) {
+          const rawPrice = typeof data.price === "number" ? data.price : parseFloat(data.price);
+          if (!isNaN(rawPrice) && rawPrice > 0) {
+            setQuote((prev) => ({
+              ...prev,
+              symbol: "XAU/USD",
+              price: rawPrice,
+              bid: data.bid !== undefined ? (typeof data.bid === "number" ? data.bid : parseFloat(data.bid)) : (rawPrice - 0.25),
+              ask: data.ask !== undefined ? (typeof data.ask === "number" ? data.ask : parseFloat(data.ask)) : (rawPrice + 0.25),
+              spread: data.spread !== undefined ? (typeof data.spread === "number" ? data.spread : parseFloat(data.spread)) : 0.5,
+              high24h: data.high24h !== undefined ? (typeof data.high24h === "number" ? data.high24h : parseFloat(data.high24h)) : (rawPrice * 1.02),
+              low24h: data.low24h !== undefined ? (typeof data.low24h === "number" ? data.low24h : parseFloat(data.low24h)) : (rawPrice * 0.98),
+              change24h: data.change24h !== undefined ? (typeof data.change24h === "number" ? data.change24h : parseFloat(data.change24h)) : prev.change24h,
+              changePercent24h: data.changePercent24h !== undefined ? (typeof data.changePercent24h === "number" ? data.changePercent24h : parseFloat(data.changePercent24h)) : prev.changePercent24h,
+              volume24h: data.volume24h !== undefined ? (typeof data.volume24h === "number" ? data.volume24h : parseFloat(data.volume24h)) : prev.volume24h,
+              timestamp: data.timestamp || Date.now(),
+              source: data.source || prev.source,
+            }));
+          }
         }
 
         if (data.depth && data.depth.bids && data.depth.asks) {
@@ -208,7 +235,7 @@ export function App() {
               qty: t.qty,
               side: t.side || (t.isBuyerMaker ? "sell" : "buy"),
               time: t.time,
-              isWhale: t.qty >= settings.whaleThreshold,
+              isWhale: t.qty >= settingsRef.current.whaleThreshold,
             }));
             const combined = [...mapped, ...prev];
             return Array.from(new Map(combined.map((x) => [x.id, x])).values()).slice(0, 50);
@@ -218,22 +245,21 @@ export function App() {
         if (data.klines && Array.isArray(data.klines) && data.klines.length > 0) {
           const bars = generateFootprintFromKlines(
             data.klines,
-            settings.tickSize,
-            settings.imbalanceRatio
+            settingsRef.current.tickSize,
+            settingsRef.current.imbalanceRatio
           );
           setFootprintBars(bars);
-          setLiquidityZones(detectLiquidityZones(data.price || quote.price, bars));
+          setLiquidityZones(detectLiquidityZones(data.price || 4360.0, bars));
         }
       } catch (err) {
-        console.error("Failed to parse gold market snapshot:", err);
+        console.error("Failed to parse market snapshot:", err);
       }
     }
-  }, [timeframe, settings.tickSize, settings.imbalanceRatio, settings.whaleThreshold, quote.price]);
+  }, [timeframe]);
 
   useEffect(() => {
     pollMarketData();
-    // Refresh background klines every 15 seconds to update candles without competing with live WebSocket
-    const timer = setInterval(pollMarketData, 15000);
+    const timer = setInterval(pollMarketData, 5000);
     return () => clearInterval(timer);
   }, [pollMarketData, feedKey]);
 
@@ -242,21 +268,41 @@ export function App() {
       (newTicker) => {
         setQuote((prev) => {
           const updated = { ...prev, ...newTicker };
-          liquidityZones.forEach((z) => {
+          const p = updated.price;
+
+          // Dynamically reflect tick on the last active footprint bar
+          setFootprintBars((prevBars) => {
+            if (!prevBars || prevBars.length === 0) return prevBars;
+            const lastIndex = prevBars.length - 1;
+            const last = prevBars[lastIndex];
+            const updatedLast = {
+              ...last,
+              close: p,
+              high: Math.max(last.high, p),
+              low: Math.min(last.low, p),
+              volume: Number((last.volume + 0.2).toFixed(1)),
+            };
+            const copy = [...prevBars];
+            copy[lastIndex] = updatedLast;
+            return copy;
+          });
+
+          const zones = liquidityZonesRef.current;
+          zones.forEach((z) => {
             if (z.status === "untested") {
               if (z.type === "BSL" && updated.price >= z.priceTop) {
                 z.status = "swept";
                 setAlertBanner(
-                  `🚨 تم صيد وسحب سيولة الشراء العلوية (BSL Sweep) عند $${updated.price.toFixed(2)}!`
+                  `🚨 تم صيد وسحب سيولة الشراء العلوية للذهب (BSL Sweep) عند $${updated.price.toFixed(2)}!`
                 );
-                playSweepSound();
+                playSweepSoundRef.current();
                 setTimeout(() => setAlertBanner(null), 7000);
               } else if (z.type === "SSL" && updated.price <= z.priceBottom) {
                 z.status = "swept";
                 setAlertBanner(
-                  `🚨 تم صيد وسحب سيولة البيع السفلية (SSL Sweep) عند $${updated.price.toFixed(2)}!`
+                  `🚨 تم صيد وسحب سيولة البيع السفلية للذهب (SSL Sweep) عند $${updated.price.toFixed(2)}!`
                 );
-                playSweepSound();
+                playSweepSoundRef.current();
                 setTimeout(() => setAlertBanner(null), 7000);
               }
             }
@@ -272,11 +318,12 @@ export function App() {
       },
       (status) => {
         setConnectionStatus(status);
-      }
+      },
+      "PAXGUSDT"
     );
 
     return () => disconnect();
-  }, [liquidityZones, playSweepSound, feedKey]);
+  }, [feedKey]);
 
   const handleTriggerAiAnalysis = async () => {
     setIsAiLoading(true);
@@ -314,7 +361,8 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0a0d14] text-slate-100 font-['Cairo']">
+    <div className="flex flex-col h-[100dvh] w-screen overflow-hidden bg-[#0a0d14] text-slate-100 font-['Cairo'] select-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+      <OfflineNotice />
       <Header
         quote={quote}
         timeframe={timeframe}

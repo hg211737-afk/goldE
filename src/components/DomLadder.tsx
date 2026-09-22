@@ -53,7 +53,7 @@ export const DomLadder: React.FC<DomLadderProps> = ({ depth, currentPrice, sprea
 
         <div className="px-3 py-1.5 bg-amber-500/15 border-y border-amber-500/30 flex items-center justify-between text-xs font-bold text-amber-300">
           <span>السعر اللحظي:</span>
-          <span>${currentPrice.toFixed(2)}</span>
+          <span>${currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
         </div>
 
         {depth.bids.slice(0, 10).map((item, idx) => {
