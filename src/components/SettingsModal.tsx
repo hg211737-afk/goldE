@@ -15,6 +15,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { AppSettings } from "../types";
+import { testGeminiApiKey } from "../services/geminiClientService";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -45,6 +46,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [showKey, setShowKey] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [testMessage, setTestMessage] = useState<string>("");
+  const [saveNotice, setSaveNotice] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -53,35 +55,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onUpdateSettings({ customGeminiApiKey: trimmed });
     try {
       localStorage.setItem("gold_orderflow_gemini_key", trimmed);
+      setSaveNotice(true);
+      setTimeout(() => setSaveNotice(false), 2500);
     } catch {
       // ignore
     }
   };
 
   const handleTestApiKey = async () => {
+    const keyToTest = apiKeyInput.trim() || settings.customGeminiApiKey || "";
+    if (!keyToTest) {
+      setTestStatus("error");
+      setTestMessage("يرجى إدخال مفتاح Gemini API أولاً للبدء بالفحص.");
+      return;
+    }
+
     setTestStatus("testing");
-    setTestMessage("جاري فحص الاتصال بنموذج الذكاء الاصطناعي...");
+    setTestMessage("جاري فحص الاتصال والتحقق من صلاحية المفتاح...");
     try {
-      const res = await fetch("/api/gemini/test-key", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          apiKey: apiKeyInput.trim() || settings.customGeminiApiKey || "",
-          model: settings.aiModel || "gemini-3.6-flash",
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.valid) {
+      const result = await testGeminiApiKey(keyToTest, settings.aiModel || "gemini-2.5-flash");
+      if (result.valid) {
         setTestStatus("success");
-        setTestMessage(data.message || "تم التحقق من المفتاح بنجاح! جاهز للتحليل اللحظي.");
+        setTestMessage(result.message);
         handleSaveApiKey();
       } else {
         setTestStatus("error");
-        setTestMessage(data.message || "فشل التحقق من المفتاح، يرجى التأكد من صحة المفتاح.");
+        setTestMessage(result.message);
       }
     } catch (err: any) {
       setTestStatus("error");
-      setTestMessage("تعذر الاتصال بخادم الفحص: " + (err?.message || "خطأ في الشبكة"));
+      setTestMessage("تعذر الفحص: " + (err?.message || "يرجى التحقق من اتصال الإنترنت"));
     }
   };
 
@@ -246,15 +249,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   <button
                     onClick={handleSaveApiKey}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-all cursor-pointer"
                   >
-                    حفظ في التطبيق
+                    <span>حفظ في التطبيق</span>
                   </button>
 
-                  {settings.customGeminiApiKey && (
+                  {saveNotice && (
+                    <span className="text-[11px] text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>تم الحفظ بنجاح!</span>
+                    </span>
+                  )}
+
+                  {settings.customGeminiApiKey && !saveNotice && (
                     <span className="text-[11px] text-emerald-400 flex items-center gap-1 mr-auto">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>مفتاحك الشخصي محفوظ ونشط</span>
+                      <span>المفتاح محفوظ ونشط في جهازك</span>
                     </span>
                   )}
                 </div>
@@ -280,15 +290,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label className="text-slate-300 font-semibold block">نموذج الذكاء الاصطناعي المعتمد للتحليل:</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
-                    { id: "gemini-3.6-flash", label: "Gemini 3.6 Flash", desc: "النموذج المؤسسي الأحدث وفائق السرعة (موصى به)" },
-                    { id: "gemini-3.6-pro", label: "Gemini 3.6 Pro", desc: "استدلال وتحليل استراتيجي عميق لمحافظ الحيتان" },
+                    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", desc: "النموذج الرسمي الأحدث فائق السرعة والدقة (موصى به)" },
+                    { id: "gemini-flash-latest", label: "Gemini Flash Latest", desc: "أحدث إصدار فلاش تلقائياً من خوادم Google" },
+                    { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite", desc: "استجابة فورية فائقة السرعة للأجهزة المحمولة" },
+                    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", desc: "استدلال وتحليل استراتيجي عميق لمحافظ الحيتان" },
                   ].map((m) => {
-                    const isSelected = (settings.aiModel || "gemini-3.6-flash") === m.id;
+                    const isSelected = (settings.aiModel || "gemini-2.5-flash") === m.id;
                     return (
                       <button
                         key={m.id}
                         type="button"
-                        onClick={() => onUpdateSettings({ aiModel: m.id })}
+                        onClick={() => {
+                          onUpdateSettings({ aiModel: m.id });
+                          try {
+                            localStorage.setItem("gold_orderflow_ai_model", m.id);
+                          } catch {
+                            // ignore
+                          }
+                        }}
                         className={`p-2.5 rounded-xl border text-right transition-all cursor-pointer ${
                           isSelected
                             ? "bg-amber-500/15 border-amber-400 text-amber-300 shadow-sm"

@@ -73,11 +73,11 @@ export function App() {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("liquidity");
   const [settings, setSettings] = useState<AppSettings>(() => {
     let savedKey = "";
-    let savedModel = "gemini-3.6-flash";
+    let savedModel = "gemini-2.5-flash";
     try {
       if (typeof window !== "undefined") {
         savedKey = localStorage.getItem("gold_orderflow_gemini_key") || "";
-        savedModel = localStorage.getItem("gold_orderflow_ai_model") || "gemini-3.6-flash";
+        savedModel = localStorage.getItem("gold_orderflow_ai_model") || "gemini-2.5-flash";
       }
     } catch {
       // ignore
@@ -259,7 +259,7 @@ export function App() {
 
   useEffect(() => {
     pollMarketData();
-    const timer = setInterval(pollMarketData, 5000);
+    const timer = setInterval(pollMarketData, 2000);
     return () => clearInterval(timer);
   }, [pollMarketData, feedKey]);
 
@@ -615,7 +615,7 @@ export function App() {
           setIsAiModalOpen(false);
           setIsSettingsModalOpen(true);
         }}
-        activeModel={settings.aiModel || "Gemini 3.6 Flash"}
+        activeModel={settings.aiModel || "gemini-2.5-flash"}
         hasCustomKey={Boolean(settings.customGeminiApiKey && settings.customGeminiApiKey.trim())}
       />
 

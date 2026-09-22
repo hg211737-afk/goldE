@@ -26,10 +26,13 @@ const getGeminiClient = (customKey?: string) => {
 };
 
 const CANDIDATE_MODELS = [
-  "gemini-3.6-flash",
+  "gemini-2.5-flash",
+  "gemini-flash-latest",
+  "gemini-3.1-flash-lite",
   "gemini-2.5-flash-preview-05-20",
   "gemini-2.0-flash",
   "gemini-1.5-flash",
+  "gemini-3.6-flash",
 ];
 
 async function callGeminiWithModelFallback(ai: any, options: {
@@ -366,7 +369,9 @@ app.post("/api/gemini/analyze-orderflow", async (req, res) => {
 }
 `;
 
-    const candidateList = ["gemini-3.6-flash"];
+    const candidateList = preferredModel
+      ? [preferredModel, ...CANDIDATE_MODELS.filter((m) => m !== preferredModel)]
+      : CANDIDATE_MODELS;
 
     let responseText: string | null = null;
     for (let attempt = 1; attempt <= 2; attempt++) {

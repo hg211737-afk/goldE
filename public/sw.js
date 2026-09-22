@@ -38,9 +38,11 @@ self.addEventListener('fetch', (event) => {
     url.pathname.startsWith('/api/') ||
     url.hostname.includes('binance') ||
     url.hostname.includes('tradingview') ||
+    url.hostname.includes('coingecko') ||
     url.hostname.includes('googleapis') ||
     event.request.method !== 'GET'
   ) {
+    event.respondWith(fetch(event.request));
     return;
   }
 

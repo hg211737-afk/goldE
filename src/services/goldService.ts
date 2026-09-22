@@ -1,5 +1,6 @@
 import { FootprintBar, LiquidityZone, TradeItem, DOMDepthData, DOMLevel, GoldQuote, AiAnalysisResult, TradeOutcomeRecord } from "../types";
 import { generateDualSmartLevels, getMacroCorrelationData } from "./correlationService";
+import { directGeminiAnalyzeOrderFlow } from "./geminiClientService";
 
 export function getStoredTradeOutcomes(): TradeOutcomeRecord[] {
   try {
@@ -368,17 +369,24 @@ export function connectGoldWebSocket(
   let change24h = 0;
   let changePercent24h = 0;
   let volume24h = 0;
+  let currentEndpointIndex = 0;
+  let lastTickTimestamp = Date.now();
 
   const rawSym = (currentSymbol === "XAU/USD" || currentSymbol === "GOLD" ? "PAXGUSDT" : currentSymbol).toUpperCase().replace(/[^A-Z0-9]/g, "");
   const symLower = rawSym.toLowerCase();
 
-  // Multi-stream combined WebSocket URL: receives aggTrade, 24hr ticker stats, and live orderbook depth
-  const streamUrl = `wss://stream.binance.com:9443/stream?streams=${symLower}@aggTrade/${symLower}@ticker/${symLower}@depth20@100ms`;
+  // Standard port 443 endpoints - never blocked by cellular carriers or corporate firewalls
+  const endpoints = [
+    `wss://stream.binance.com/stream?streams=${symLower}@bookTicker/${symLower}@aggTrade/${symLower}@ticker/${symLower}@depth20@100ms`,
+    `wss://data-stream.binance.com/stream?streams=${symLower}@bookTicker/${symLower}@aggTrade/${symLower}@ticker/${symLower}@depth20@100ms`,
+    `wss://stream.binance.com:9443/stream?streams=${symLower}@bookTicker/${symLower}@aggTrade/${symLower}@ticker/${symLower}@depth20@100ms`,
+  ];
 
   const setupWebSocket = () => {
     if (isClosed) return;
 
     try {
+      const streamUrl = endpoints[currentEndpointIndex % endpoints.length];
       ws = new WebSocket(streamUrl);
 
       ws.onopen = () => {
@@ -386,11 +394,16 @@ export function connectGoldWebSocket(
           ws?.close();
           return;
         }
+        lastTickTimestamp = Date.now();
+        if (fallbackTimer) {
+          clearInterval(fallbackTimer);
+          fallbackTimer = null;
+        }
         if (onStatus) {
           onStatus({
             connected: true,
-            latencyMs: 15,
-            source: `BINANCE:${rawSym} (Live wss aggTrade)`,
+            latencyMs: 12,
+            source: `BINANCE:${rawSym} (Live WebSocket)`,
             updatesCount,
           });
         }
@@ -399,30 +412,54 @@ export function connectGoldWebSocket(
       ws.onmessage = (event) => {
         if (isClosed) return;
         try {
+          lastTickTimestamp = Date.now();
           const payload = JSON.parse(event.data);
           const stream = payload.stream || "";
           const data = payload.data || payload;
 
-          // 1. Exact aggTrade price tick (Matches TradingView real-time ticks to the penny)
-          if (stream.endsWith("@aggTrade") || data.e === "aggTrade") {
+          // 1. Live bookTicker: Best Bid & Ask ticks (Fires multiple times every second!)
+          if (stream.endsWith("@bookTicker") || data.b !== undefined && data.a !== undefined && !data.e) {
+            const bid = parseFloat(data.b);
+            const ask = parseFloat(data.a);
+            if (!isNaN(bid) && !isNaN(ask) && bid > 0 && ask > 0) {
+              const midPrice = Number(((bid + ask) / 2).toFixed(2));
+              updatesCount++;
+              if (!lastPrice || Math.abs(midPrice - lastPrice) < 25) {
+                lastPrice = midPrice;
+              }
+
+              onTicker({
+                symbol: "XAU/USD",
+                price: lastPrice || midPrice,
+                bid,
+                ask,
+                spread: Number((ask - bid).toFixed(2)),
+                high24h: high24h || (lastPrice ? lastPrice * 1.015 : midPrice * 1.015),
+                low24h: low24h || (lastPrice ? lastPrice * 0.985 : midPrice * 0.985),
+                change24h,
+                changePercent24h,
+                volume24h,
+                timestamp: Date.now(),
+                source: `BINANCE:${rawSym} (Live wss bookTicker)`,
+              });
+
+              if (onStatus && updatesCount % 5 === 0) {
+                onStatus({
+                  connected: true,
+                  latencyMs: 12,
+                  source: `BINANCE:${rawSym} (Live wss 100ms)`,
+                  updatesCount,
+                });
+              }
+            }
+          }
+
+          // 2. Exact aggTrade price tick (Executions on Binance)
+          else if (stream.endsWith("@aggTrade") || data.e === "aggTrade") {
             const exactPrice = parseFloat(data.p);
             if (!isNaN(exactPrice) && exactPrice > 0) {
               updatesCount++;
               lastPrice = exactPrice;
-
-              // DOM ID exact update as specified
-              const priceElem = document.getElementById("price");
-              if (priceElem) {
-                priceElem.innerText = exactPrice.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }) + " $";
-              }
-
-              const sourceElem = document.getElementById("source");
-              if (sourceElem) {
-                sourceElem.innerText = `BINANCE:${rawSym} (wss://stream.binance.com:9443/ws/${symLower}@aggTrade)`;
-              }
 
               const qty = parseFloat(data.q || "0");
               const isBuyerMaker = data.m; // true = sell taker, false = buy taker
@@ -431,11 +468,11 @@ export function connectGoldWebSocket(
               onTicker({
                 symbol: "XAU/USD",
                 price: exactPrice,
-                bid: exactPrice - 0.25,
-                ask: exactPrice + 0.25,
+                bid: Number((exactPrice - 0.25).toFixed(2)),
+                ask: Number((exactPrice + 0.25).toFixed(2)),
                 spread: 0.50,
-                high24h: high24h || exactPrice * 1.02,
-                low24h: low24h || exactPrice * 0.98,
+                high24h: high24h || exactPrice * 1.015,
+                low24h: low24h || exactPrice * 0.985,
                 change24h,
                 changePercent24h,
                 volume24h,
@@ -463,7 +500,7 @@ export function connectGoldWebSocket(
             }
           }
 
-          // 2. 24hr Ticker statistics
+          // 3. 24hr Ticker statistics
           else if (stream.endsWith("@ticker") || data.e === "24hrTicker") {
             if (data.c) {
               const curP = parseFloat(data.c);
@@ -490,7 +527,7 @@ export function connectGoldWebSocket(
             });
           }
 
-          // 3. Live Orderbook Depth (Top 20 bids and asks)
+          // 4. Live Orderbook Depth (Top 20 bids and asks)
           else if (stream.endsWith("@depth20@100ms") || data.bids || data.asks) {
             if (data.bids && data.asks) {
               let runningB = 0;
@@ -525,51 +562,133 @@ export function connectGoldWebSocket(
       };
 
       ws.onerror = () => {
-        // Fallback to HTTP polling if WebSocket is blocked in strict sandboxes
+        currentEndpointIndex++;
         startFallbackPolling();
       };
 
       ws.onclose = () => {
         if (!isClosed) {
+          startFallbackPolling();
           reconnectTimer = setTimeout(setupWebSocket, 2000);
         }
       };
     } catch {
+      currentEndpointIndex++;
       startFallbackPolling();
     }
   };
 
+  // High-frequency Fallback Polling (Works everywhere: installed PWA, standalone, mobile network)
   const startFallbackPolling = () => {
     if (fallbackTimer || isClosed) return;
-    fallbackTimer = setInterval(async () => {
+
+    const pollTick = async () => {
       if (isClosed) return;
       try {
-        const res = await fetch(`/api/gold/live?symbol=${rawSym}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.price) {
-            const p = parseFloat(data.price);
-            const priceElem = document.getElementById("price");
-            if (priceElem) priceElem.innerText = p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $";
-            const sourceElem = document.getElementById("source");
-            if (sourceElem) sourceElem.innerText = `BINANCE:${rawSym} (Live API)`;
-            onTicker({
-              symbol: "XAU/USD",
-              price: p,
-              high24h: data.high24h,
-              low24h: data.low24h,
-              change24h: data.change24h,
-              changePercent24h: data.changePercent24h,
-              volume24h: data.volume24h,
-              source: `BINANCE:${rawSym} (Live API)`,
+        let price = 0;
+        let bid = 0;
+        let ask = 0;
+        let h24 = 0;
+        let l24 = 0;
+        let ch24 = 0;
+        let chP24 = 0;
+        let vol = 0;
+
+        // Try server API first
+        try {
+          const res = await fetch(`/api/gold/live?symbol=${rawSym}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.price) {
+              price = parseFloat(data.price);
+              bid = data.bid ? parseFloat(data.bid) : price - 0.25;
+              ask = data.ask ? parseFloat(data.ask) : price + 0.25;
+              h24 = data.high24h;
+              l24 = data.low24h;
+              ch24 = data.change24h;
+              chP24 = data.changePercent24h;
+              vol = data.volume24h;
+            }
+          }
+        } catch {
+          // ignore
+        }
+
+        // If server API is unavailable (standalone client PWA), fetch Binance REST directly!
+        if (!price || isNaN(price)) {
+          try {
+            const [bRes, tRes] = await Promise.allSettled([
+              fetch(`https://api.binance.com/api/v3/ticker/bookTicker?symbol=${rawSym}`),
+              fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${rawSym}`),
+            ]);
+
+            if (bRes.status === "fulfilled" && bRes.value.ok) {
+              const bData = await bRes.value.json();
+              if (bData && bData.bidPrice && bData.askPrice) {
+                bid = parseFloat(bData.bidPrice);
+                ask = parseFloat(bData.askPrice);
+                price = Number(((bid + ask) / 2).toFixed(2));
+              }
+            }
+
+            if (tRes.status === "fulfilled" && tRes.value.ok) {
+              const tData = await tRes.value.json();
+              if (tData) {
+                if (!price && tData.lastPrice) price = parseFloat(tData.lastPrice);
+                h24 = parseFloat(tData.highPrice) || price + 15;
+                l24 = parseFloat(tData.lowPrice) || price - 15;
+                ch24 = parseFloat(tData.priceChange) || 0;
+                chP24 = parseFloat(tData.priceChangePercent) || 0;
+                vol = parseFloat(tData.volume) || 0;
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        if (price && !isNaN(price)) {
+          updatesCount++;
+          lastPrice = price;
+          onTicker({
+            symbol: "XAU/USD",
+            price,
+            bid: bid || price - 0.25,
+            ask: ask || price + 0.25,
+            spread: Number(((ask || price + 0.25) - (bid || price - 0.25)).toFixed(2)),
+            high24h: h24 || price * 1.015,
+            low24h: l24 || price * 0.985,
+            change24h: ch24,
+            changePercent24h: chP24,
+            volume24h: vol,
+            timestamp: Date.now(),
+            source: `BINANCE:${rawSym} (Live Auto-Polling)`,
+          });
+
+          if (onStatus) {
+            onStatus({
+              connected: true,
+              latencyMs: 38,
+              source: `BINANCE:${rawSym} (Live 1s Polling)`,
+              updatesCount,
             });
           }
         }
       } catch {
         // ignore
       }
-    }, 1000);
+    };
+
+    pollTick();
+    fallbackTimer = setInterval(pollTick, 1200);
   };
+
+  // Watchdog: If no tick received for 3 seconds, start fallback polling
+  const watchdogTimer = setInterval(() => {
+    if (!isClosed && Date.now() - lastTickTimestamp > 3000) {
+      startFallbackPolling();
+    }
+  }, 2500);
 
   setupWebSocket();
 
@@ -585,6 +704,7 @@ export function connectGoldWebSocket(
     }
     if (reconnectTimer) clearTimeout(reconnectTimer);
     if (fallbackTimer) clearInterval(fallbackTimer);
+    clearInterval(watchdogTimer);
   };
 }
 
@@ -650,7 +770,7 @@ export async function fetchBinanceGoldDirect(interval: string = "5m") {
       changePercent24h,
       volume24h: 5840.0,
       timestamp: Date.now(),
-      source: "COMEX Gold Spot (1:1 XAU/USD)",
+      source: "BINANCE:PAXGUSDT (Live Gold Spot)",
     };
 
     let depthData = null;
@@ -787,7 +907,7 @@ export async function analyzeOrderFlowWithGemini(params: {
         return {
           bias: data.biasAr || data.bias || (isBullish ? "تجميع شرائي مؤسسي صاعد" : "تصريف بيعي مؤسسي هابط"),
           confidenceScore: adjustedConfidence,
-          summary: data.summaryAr || data.summary || "تم تحليل بيانات تدفق الأوامر والسيولة اللحظية بنجاح عبر Gemini 3.6 Flash.",
+          summary: data.summaryAr || data.summary || "تم تحليل بيانات تدفق الأوامر والسيولة اللحظية بنجاح عبر Gemini.",
           liquidityAnalysis: data.institutionalActivityAr || data.liquidityAnalysis || `أحواض السيولة: BSL عند ${params.bslLevels[0] || `$${(price + 8).toFixed(2)}`} ، SSL عند ${params.sslLevels[0] || `$${(price - 8).toFixed(2)}`}`,
           orderFlowInsight: data.dxyCorrelationInsightAr || data.orderFlowInsight || `دلتا الفوت برنت: ${params.delta} مع تمركز الـ POC عند ${params.pocPrice}. مسار CVD: ${params.cvdTrend}.`,
           dualSmartLevels: dualLevels,
@@ -804,13 +924,73 @@ export async function analyzeOrderFlowWithGemini(params: {
             takeProfit2: data.tradeSetup?.takeProfit2 || `$${(price + 16.0).toFixed(2)}`,
             riskRewardRatio: data.tradeSetup?.riskReward || "1 : 3.1",
           },
-          keyAdvice: `🧠 [Gemini 3.6 Flash المؤسسي]: ${data.warningsAr?.[0] || "التزم بوقف الخسارة المحكم المعتمد على مستويات POC والسيولة المؤسسية."}`,
+          keyAdvice: `🧠 [Gemini المؤسسي المباشر]: ${data.warningsAr?.[0] || "التزم بوقف الخسارة المحكم المعتمد على مستويات POC والسيولة المؤسسية."}`,
           learningStats: learning,
         };
       }
     }
   } catch (err) {
-    console.warn("Server Gemini call notice, using local institutional confluence:", err);
+    console.warn("Server Gemini call notice, attempting direct client-side Gemini fallback:", err);
+  }
+
+  // 2. Direct client-side Gemini call if server proxy failed (e.g. Installed standalone app, Capacitor APK, or offline server)
+  if (params.customApiKey && params.customApiKey.trim()) {
+    try {
+      const directData = await directGeminiAnalyzeOrderFlow(
+        params.customApiKey.trim(),
+        {
+          currentPrice: price,
+          delta: params.delta,
+          cvdTrend: params.cvdTrend,
+          footprintImbalance: params.footprintImbalance,
+          bslLevels: params.bslLevels,
+          sslLevels: params.sslLevels,
+          pocPrice: params.pocPrice,
+          fvgZones: params.fvgZones,
+          timeframe: params.timeframe,
+          macroCorrelation: {
+            dxyAnalysis: macro.dxyAnalysisAr,
+            sentiment: macro.overallSentimentAr,
+          },
+        },
+        params.preferredModel || "gemini-2.5-flash"
+      );
+
+      if (directData && (directData.summaryAr || directData.summary)) {
+        const isBullish =
+          directData.bias?.toLowerCase().includes("bull") ||
+          directData.biasAr?.includes("صاعد") ||
+          directData.tradeSetup?.action === "BUY";
+
+        const confidence = directData.confidence || directData.confidenceScore || 92;
+
+        return {
+          bias: directData.biasAr || directData.bias || (isBullish ? "تجميع شرائي مؤسسي صاعد" : "تصريف بيعي مؤسسي هابط"),
+          confidenceScore: confidence,
+          summary: directData.summaryAr || directData.summary || "تم تحليل بيانات تدفق الأوامر والسيولة اللحظية بنجاح عبر Google Gemini المباشر.",
+          liquidityAnalysis: directData.institutionalActivityAr || directData.liquidityAnalysis || `أحواض السيولة: BSL عند ${params.bslLevels[0] || `$${(price + 8).toFixed(2)}`} ، SSL عند ${params.sslLevels[0] || `$${(price - 8).toFixed(2)}`}`,
+          orderFlowInsight: directData.dxyCorrelationInsightAr || directData.orderFlowInsight || `دلتا الفوت برنت: ${params.delta} مع تمركز الـ POC عند ${params.pocPrice}. مسار CVD: ${params.cvdTrend}.`,
+          dualSmartLevels: dualLevels,
+          macroCorrelation: {
+            dxyImpact: macro.dxyAnalysisAr,
+            macroAlignment: macro.overallSentimentAr,
+            silverConfirmation: macro.assets.find((a) => a.symbol === "XAG/USD")?.impactDescriptionAr || "الفضة تؤكد التوافق المؤسسي لحركة الذهب.",
+          },
+          setup: {
+            type: directData.tradeSetup?.actionAr || (isBullish ? "شراء مؤسسي مؤكد (Buy Setup)" : "بيع مكشوف مؤكد (Sell Setup)"),
+            entryZone: directData.tradeSetup?.entryZone || `$${(price - 1.25).toFixed(2)} - $${price.toFixed(2)}`,
+            stopLoss: directData.tradeSetup?.stopLoss || (isBullish ? `$${(price - 4.5).toFixed(2)}` : `$${(price + 4.5).toFixed(2)}`),
+            takeProfit1: directData.tradeSetup?.takeProfit1 || (params.bslLevels[0] || `$${(price + 8.5).toFixed(2)}`),
+            takeProfit2: directData.tradeSetup?.takeProfit2 || `$${(price + 16.0).toFixed(2)}`,
+            riskRewardRatio: directData.tradeSetup?.riskReward || "1 : 3.1",
+          },
+          keyAdvice: `🧠 [Google Gemini مباشر على التطبيق]: ${directData.warningsAr?.[0] || "التزم بوقف الخسارة المحكم المعتمد على مستويات POC والسيولة المؤسسية."}`,
+          learningStats: learning,
+        };
+      }
+    } catch (directErr) {
+      console.warn("Direct Gemini call error, falling back to algorithmic confluence:", directErr);
+    }
   }
 
   // Graceful institutional fallback if server or network times out
