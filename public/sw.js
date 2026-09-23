@@ -1,5 +1,5 @@
 // Gold OrderFlow Pro - PWA Service Worker
-const CACHE_NAME = 'goldflow-v1';
+const CACHE_NAME = 'goldflow-v4';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -37,8 +37,10 @@ self.addEventListener('fetch', (event) => {
   if (
     url.pathname.startsWith('/api/') ||
     url.hostname.includes('binance') ||
-    url.hostname.includes('tradingview') ||
+    url.hostname.includes('kraken') ||
     url.hostname.includes('coingecko') ||
+    url.hostname.includes('kucoin') ||
+    url.hostname.includes('tradingview') ||
     url.hostname.includes('googleapis') ||
     event.request.method !== 'GET'
   ) {

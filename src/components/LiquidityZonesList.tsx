@@ -1,7 +1,19 @@
 import React, { useState } from "react";
-import { ArrowDownRight, ArrowUpRight, Target, Zap, Layers, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Target,
+  Layers,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
+  BookOpen,
+  Sparkles,
+  Info,
+} from "lucide-react";
 import { LiquidityZone, DualSmartLevel } from "../types";
 import { generateDualSmartLevels } from "../services/correlationService";
+import { LiquidityExplainerModal } from "./LiquidityExplainerModal";
 
 interface LiquidityZonesListProps {
   zones: LiquidityZone[];
@@ -20,11 +32,15 @@ export const LiquidityZonesList: React.FC<LiquidityZonesListProps> = ({
   onOpenDualLevelsModal,
 }) => {
   const [showDualCard, setShowDualCard] = useState(true);
+  const [selectedZoneForExplain, setSelectedZoneForExplain] = useState<LiquidityZone | null>(null);
+  const [hoveredTooltipZoneId, setHoveredTooltipZoneId] = useState<string | null>(null);
+
   const levels = dualLevels || generateDualSmartLevels(currentPrice, zones);
   const { upperLevel, lowerLevel } = levels;
 
   return (
-    <div className="flex flex-col h-full bg-[#111622] rounded-xl border border-slate-800/80 overflow-hidden select-none">
+    <div className="flex flex-col h-full bg-[#111622] rounded-xl border border-slate-800/80 overflow-hidden select-none font-['Cairo']">
+      {/* Header */}
       <div className="px-3 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
           <Target className="w-3.5 h-3.5 text-amber-400" />
@@ -109,8 +125,12 @@ export const LiquidityZonesList: React.FC<LiquidityZonesListProps> = ({
         </div>
 
         {/* Zones List Header */}
-        <div className="text-[10px] font-bold text-slate-400 px-1 pt-1">
-          أحواض السيولة الكلاسيكية المرصودة:
+        <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 px-1 pt-1">
+          <span>أحواض السيولة الكلاسيكية المرصودة:</span>
+          <span className="text-amber-400/90 flex items-center gap-1">
+            <Info className="w-3 h-3" />
+            اضغط "تفسير الهيكل" لفهم سياق الـ BSL و SSL
+          </span>
         </div>
 
         {zones.map((zone) => {
@@ -120,41 +140,80 @@ export const LiquidityZonesList: React.FC<LiquidityZonesListProps> = ({
 
           let badgeClass = "";
           let badgeLabel = "";
+          let structureReason = "";
 
           if (zone.type === "BSL") {
             badgeClass = "bg-rose-500/15 border-rose-500/30 text-rose-300";
             badgeLabel = "سيولة شراء علوية (BSL)";
+            structureReason = "قمة رئيسية / تكدس أوامر وقف الخسارة للبيع (Buy Stops)";
           } else if (zone.type === "SSL") {
             badgeClass = "bg-emerald-500/15 border-emerald-500/30 text-emerald-300";
             badgeLabel = "سيولة بيع سفلية (SSL)";
+            structureReason = "قاع رئيسي / تكدس أوامر وقف الخسارة للشراء (Sell Stops)";
           } else {
             badgeClass = "bg-amber-500/15 border-amber-500/30 text-amber-300";
             badgeLabel = "فجوة قيمة عادلة (FVG)";
+            structureReason = "اختلال سعري مؤسسي (Imbalance Void)";
           }
+
+          const isHovered = hoveredTooltipZoneId === zone.id;
 
           return (
             <div
               key={zone.id}
-              className={`p-2.5 rounded-lg border transition-all ${
+              className={`relative p-2.5 rounded-xl border transition-all ${
                 zone.status === "swept"
                   ? "bg-slate-900/40 border-slate-800/60 opacity-60"
-                  : "bg-slate-900/80 border-slate-750 hover:border-slate-700"
+                  : "bg-slate-900/80 border-slate-750 hover:border-slate-700 shadow-xs"
               }`}
             >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${badgeClass}`}>
-                  {badgeLabel}
-                </span>
+              {/* Row 1: Badges, Distance & Explain Trigger Button */}
+              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${badgeClass}`}>
+                    {badgeLabel}
+                  </span>
+
+                  {/* Visual 'Explain' Trigger Button with Tooltip Support */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setSelectedZoneForExplain(zone)}
+                      onMouseEnter={() => setHoveredTooltipZoneId(zone.id)}
+                      onMouseLeave={() => setHoveredTooltipZoneId(null)}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 hover:text-amber-200 transition-all cursor-pointer shadow-xs active:scale-95"
+                      title="تفسير سبب تصنيف المنطقة كهيكل BSL/SSL"
+                    >
+                      <HelpCircle className="w-3 h-3 text-amber-400" />
+                      <span>تفسير الهيكل (Explain)</span>
+                    </button>
+
+                    {/* Inline Quick Visual Tooltip */}
+                    {isHovered && (
+                      <div className="absolute top-full right-0 mt-1.5 z-40 w-64 p-2 rounded-lg bg-slate-950 border border-amber-500/40 shadow-xl text-[11px] text-slate-200 animate-in fade-in zoom-in-95 pointer-events-none">
+                        <div className="flex items-center gap-1 text-amber-400 font-bold mb-1">
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>سياق هيكل السوق:</span>
+                        </div>
+                        <p className="leading-tight text-slate-300 mb-1">{structureReason}</p>
+                        <span className="text-[10px] text-amber-400/90 font-semibold block">
+                          اضغط لفتح التقرير التحليلي الكامل ومخطط صانع السوق ←
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <span className="text-[11px] font-['JetBrains_Mono'] text-slate-300 flex items-center gap-1">
                   {isAbove ? (
                     <ArrowUpRight className="w-3.5 h-3.5 text-rose-400" />
                   ) : (
                     <ArrowDownRight className="w-3.5 h-3.5 text-emerald-400" />
                   )}
-                  يبعد {distPrice.toFixed(2)}$ ({pips} نقطة)
+                  يبعد {distPrice.toFixed(2)}$ ({pips} pt)
                 </span>
               </div>
 
+              {/* Row 2: Name & Price Boundaries */}
               <div className="flex items-baseline justify-between mb-1">
                 <span className="text-xs font-semibold text-white">{zone.nameAr}</span>
                 <span className="font-['JetBrains_Mono'] text-xs font-bold text-amber-300">
@@ -162,8 +221,25 @@ export const LiquidityZonesList: React.FC<LiquidityZonesListProps> = ({
                 </span>
               </div>
 
+              {/* Description */}
               <p className="text-[11px] text-slate-400 leading-relaxed mb-1.5">{zone.description}</p>
 
+              {/* Structural Context Quick Banner */}
+              <div className="mb-2 px-2 py-1 rounded bg-slate-950/60 border border-slate-800/80 flex items-center justify-between text-[10px]">
+                <span className="text-slate-400 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>الدافع الهيكلي:</span>
+                  <strong className="text-slate-200">{structureReason}</strong>
+                </span>
+                <button
+                  onClick={() => setSelectedZoneForExplain(zone)}
+                  className="text-amber-400 hover:text-amber-300 underline font-bold cursor-pointer"
+                >
+                  تفاصيل أكثر
+                </button>
+              </div>
+
+              {/* Row 3: Volume Cluster & Live Status */}
               <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800/60">
                 <span className="flex items-center gap-1">
                   حجم السيولة التقديري:{" "}
@@ -191,6 +267,13 @@ export const LiquidityZonesList: React.FC<LiquidityZonesListProps> = ({
           );
         })}
       </div>
+
+      {/* Liquidity Zone Market Structure Explainer Modal */}
+      <LiquidityExplainerModal
+        zone={selectedZoneForExplain}
+        currentPrice={currentPrice}
+        onClose={() => setSelectedZoneForExplain(null)}
+      />
     </div>
   );
 };

@@ -260,7 +260,26 @@ export function App() {
   useEffect(() => {
     pollMarketData();
     const timer = setInterval(pollMarketData, 2000);
-    return () => clearInterval(timer);
+
+    const handleResume = () => {
+      pollMarketData();
+      setFeedKey((k) => k + 1);
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        handleResume();
+      }
+    };
+
+    window.addEventListener("online", handleResume);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("online", handleResume);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [pollMarketData, feedKey]);
 
   useEffect(() => {
@@ -375,6 +394,10 @@ export function App() {
         activeLiquidityCount={liquidityZones.filter((z) => z.status === "untested").length}
         connectionStatus={connectionStatus}
         hasCustomApiKey={Boolean(settings.customGeminiApiKey && settings.customGeminiApiKey.trim())}
+        onRefresh={() => {
+          pollMarketData();
+          setFeedKey((k) => k + 1);
+        }}
       />
       
       <MarketSessionWidget />

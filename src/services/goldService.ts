@@ -375,11 +375,13 @@ export function connectGoldWebSocket(
   const rawSym = (currentSymbol === "XAU/USD" || currentSymbol === "GOLD" ? "PAXGUSDT" : currentSymbol).toUpperCase().replace(/[^A-Z0-9]/g, "");
   const symLower = rawSym.toLowerCase();
 
-  // Standard port 443 endpoints - never blocked by cellular carriers or corporate firewalls
+  // Multi-domain, multi-port endpoints: Binance Vision (worldwide unblocked on 443 & 9443), Binance Com, Data Stream
   const endpoints = [
+    `wss://data-stream.binance.vision:443/stream?streams=${symLower}@bookTicker/${symLower}@aggTrade/${symLower}@ticker/${symLower}@depth20@100ms`,
+    `wss://data-stream.binance.vision:9443/stream?streams=${symLower}@bookTicker/${symLower}@aggTrade/${symLower}@ticker/${symLower}@depth20@100ms`,
+    `wss://stream.binance.com:9443/stream?streams=${symLower}@bookTicker/${symLower}@aggTrade/${symLower}@ticker/${symLower}@depth20@100ms`,
     `wss://stream.binance.com/stream?streams=${symLower}@bookTicker/${symLower}@aggTrade/${symLower}@ticker/${symLower}@depth20@100ms`,
     `wss://data-stream.binance.com/stream?streams=${symLower}@bookTicker/${symLower}@aggTrade/${symLower}@ticker/${symLower}@depth20@100ms`,
-    `wss://stream.binance.com:9443/stream?streams=${symLower}@bookTicker/${symLower}@aggTrade/${symLower}@ticker/${symLower}@depth20@100ms`,
   ];
 
   const setupWebSocket = () => {
@@ -614,12 +616,13 @@ export function connectGoldWebSocket(
           // ignore
         }
 
-        // If server API is unavailable (standalone client PWA), fetch Binance REST directly!
+        // If server API is unavailable (standalone client PWA), fetch multi-source REST directly!
         if (!price || isNaN(price)) {
+          // Tier 1: Binance Vision (unblocked globally)
           try {
             const [bRes, tRes] = await Promise.allSettled([
-              fetch(`https://api.binance.com/api/v3/ticker/bookTicker?symbol=${rawSym}`),
-              fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${rawSym}`),
+              fetch(`https://data-api.binance.vision/api/v3/ticker/bookTicker?symbol=${rawSym}`),
+              fetch(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${rawSym}`),
             ]);
 
             if (bRes.status === "fulfilled" && bRes.value.ok) {
@@ -644,6 +647,82 @@ export function connectGoldWebSocket(
             }
           } catch {
             // ignore
+          }
+
+          // Tier 2: Binance Com standard
+          if (!price || isNaN(price)) {
+            try {
+              const [bRes, tRes] = await Promise.allSettled([
+                fetch(`https://api.binance.com/api/v3/ticker/bookTicker?symbol=${rawSym}`),
+                fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${rawSym}`),
+              ]);
+
+              if (bRes.status === "fulfilled" && bRes.value.ok) {
+                const bData = await bRes.value.json();
+                if (bData && bData.bidPrice && bData.askPrice) {
+                  bid = parseFloat(bData.bidPrice);
+                  ask = parseFloat(bData.askPrice);
+                  price = Number(((bid + ask) / 2).toFixed(2));
+                }
+              }
+
+              if (tRes.status === "fulfilled" && tRes.value.ok) {
+                const tData = await tRes.value.json();
+                if (tData) {
+                  if (!price && tData.lastPrice) price = parseFloat(tData.lastPrice);
+                  h24 = parseFloat(tData.highPrice) || price + 15;
+                  l24 = parseFloat(tData.lowPrice) || price - 15;
+                  ch24 = parseFloat(tData.priceChange) || 0;
+                  chP24 = parseFloat(tData.priceChangePercent) || 0;
+                  vol = parseFloat(tData.volume) || 0;
+                }
+              }
+            } catch {
+              // ignore
+            }
+          }
+
+          // Tier 3: Kraken Gold (PAXG/USD) with open CORS
+          if (!price || isNaN(price)) {
+            try {
+              const kRes = await fetch("https://api.kraken.com/0/public/Ticker?pair=PAXGUSD");
+              if (kRes.ok) {
+                const kd = await kRes.json();
+                const p = kd?.result?.PAXGUSD;
+                if (p && p.c && p.c[0]) {
+                  price = parseFloat(p.c[0]);
+                  bid = parseFloat(p.b[0]) || price - 0.25;
+                  ask = parseFloat(p.a[0]) || price + 0.25;
+                  h24 = parseFloat(p.h[0]) || price + 15;
+                  l24 = parseFloat(p.l[0]) || price - 15;
+                  ch24 = price - parseFloat(p.o || price);
+                  chP24 = parseFloat(p.o) ? ((ch24 / parseFloat(p.o)) * 100) : 0;
+                }
+              }
+            } catch {
+              // ignore
+            }
+          }
+
+          // Tier 4: CoinGecko Public Feed
+          if (!price || isNaN(price)) {
+            try {
+              const cgRes = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true");
+              if (cgRes.ok) {
+                const cd = await cgRes.json();
+                if (cd && cd["pax-gold"] && cd["pax-gold"].usd) {
+                  price = cd["pax-gold"].usd;
+                  chP24 = cd["pax-gold"].usd_24h_change || 0;
+                  ch24 = (price * chP24) / 100;
+                  h24 = price * 1.015;
+                  l24 = price * 0.985;
+                  bid = price - 0.25;
+                  ask = price + 0.25;
+                }
+              }
+            } catch {
+              // ignore
+            }
           }
         }
 
@@ -727,32 +806,171 @@ export async function fetchBinanceGoldDirect(interval: string = "5m") {
       // ignore
     }
 
-    const [tickerRes, depthRes, klinesRes, tradesRes] = await Promise.allSettled([
-      fetch("https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT", { signal: controller.signal }),
-      fetch("https://api.binance.com/api/v3/depth?symbol=PAXGUSDT&limit=30", { signal: controller.signal }),
-      fetch(`https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=${interval}&limit=50`, {
-        signal: controller.signal,
-      }),
-      fetch("https://api.binance.com/api/v3/trades?symbol=PAXGUSDT&limit=30", { signal: controller.signal }),
-    ]);
+    // Multi-tier snapshot fetching: Binance Vision -> Binance Com -> Kraken -> CoinGecko
+    let price = 0;
+    let high24h = 0;
+    let low24h = 0;
+    let change24h = 0;
+    let changePercent24h = 0;
+    let depthData: any = null;
+    let tradesData: any[] = [];
+    let klinesData: any[] = [];
+    let activeFeedSource = "Binance Vision (XAU/USD Live)";
+
+    // Tier 1: Binance Vision (worldwide unblocked)
+    try {
+      const [tickerRes, depthRes, klinesRes, tradesRes] = await Promise.allSettled([
+        fetch("https://data-api.binance.vision/api/v3/ticker/24hr?symbol=PAXGUSDT", { signal: controller.signal }),
+        fetch("https://data-api.binance.vision/api/v3/depth?symbol=PAXGUSDT&limit=30", { signal: controller.signal }),
+        fetch(`https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=${interval}&limit=50`, {
+          signal: controller.signal,
+        }),
+        fetch("https://data-api.binance.vision/api/v3/trades?symbol=PAXGUSDT&limit=30", { signal: controller.signal }),
+      ]);
+
+      if (tickerRes.status === "fulfilled" && tickerRes.value.ok) {
+        const d = await tickerRes.value.json();
+        if (d && d.lastPrice) {
+          price = parseFloat(d.lastPrice);
+          high24h = parseFloat(d.highPrice) || price + 15;
+          low24h = parseFloat(d.lowPrice) || price - 15;
+          change24h = parseFloat(d.priceChange) || 0;
+          changePercent24h = parseFloat(d.priceChangePercent) || 0;
+        }
+      }
+
+      if (depthRes.status === "fulfilled" && depthRes.value.ok) {
+        const d = await depthRes.value.json();
+        if (d.bids && d.asks) {
+          depthData = {
+            bids: d.bids.map((b: [string, string]) => [parseFloat(b[0]), parseFloat(b[1])]),
+            asks: d.asks.map((a: [string, string]) => [parseFloat(a[0]), parseFloat(a[1])]),
+          };
+        }
+      }
+
+      if (tradesRes.status === "fulfilled" && tradesRes.value.ok) {
+        const d = await tradesRes.value.json();
+        tradesData = d.map((t: any) => ({
+          id: String(t.id),
+          price: parseFloat(t.price),
+          qty: parseFloat(t.qty),
+          isBuyerMaker: t.isBuyerMaker,
+          side: t.isBuyerMaker ? "sell" : "buy",
+          time: t.time,
+          isWhale: parseFloat(t.qty) >= 4,
+        }));
+      }
+
+      if (klinesRes.status === "fulfilled" && klinesRes.value.ok) {
+        const d = await klinesRes.value.json();
+        klinesData = d.map((k: any) => ({
+          time: k[0],
+          open: parseFloat(k[1]),
+          high: parseFloat(k[2]),
+          low: parseFloat(k[3]),
+          close: parseFloat(k[4]),
+          volume: parseFloat(k[5]),
+          takerBuyBaseVolume: parseFloat(k[9]),
+        }));
+      }
+    } catch {
+      // ignore
+    }
+
+    // Tier 2: Binance Com (if Vision was empty)
+    if (!price) {
+      try {
+        const [tickerRes, depthRes, klinesRes] = await Promise.allSettled([
+          fetch("https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT"),
+          fetch("https://api.binance.com/api/v3/depth?symbol=PAXGUSDT&limit=30"),
+          fetch(`https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=${interval}&limit=50`),
+        ]);
+
+        if (tickerRes.status === "fulfilled" && tickerRes.value.ok) {
+          const d = await tickerRes.value.json();
+          if (d && d.lastPrice) {
+            price = parseFloat(d.lastPrice);
+            high24h = parseFloat(d.highPrice) || price + 15;
+            low24h = parseFloat(d.lowPrice) || price - 15;
+            change24h = parseFloat(d.priceChange) || 0;
+            changePercent24h = parseFloat(d.priceChangePercent) || 0;
+            activeFeedSource = "Binance Global (PAXGUSDT)";
+          }
+        }
+
+        if (!depthData && depthRes.status === "fulfilled" && depthRes.value.ok) {
+          const d = await depthRes.value.json();
+          if (d.bids && d.asks) {
+            depthData = {
+              bids: d.bids.map((b: [string, string]) => [parseFloat(b[0]), parseFloat(b[1])]),
+              asks: d.asks.map((a: [string, string]) => [parseFloat(a[0]), parseFloat(a[1])]),
+            };
+          }
+        }
+
+        if ((!klinesData || klinesData.length === 0) && klinesRes.status === "fulfilled" && klinesRes.value.ok) {
+          const d = await klinesRes.value.json();
+          klinesData = d.map((k: any) => ({
+            time: k[0],
+            open: parseFloat(k[1]),
+            high: parseFloat(k[2]),
+            low: parseFloat(k[3]),
+            close: parseFloat(k[4]),
+            volume: parseFloat(k[5]),
+            takerBuyBaseVolume: parseFloat(k[9]),
+          }));
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // Tier 3: Kraken Institutional Gold (PAXG/USD)
+    if (!price) {
+      try {
+        const kRes = await fetch("https://api.kraken.com/0/public/Ticker?pair=PAXGUSD");
+        if (kRes.ok) {
+          const kd = await kRes.json();
+          const p = kd?.result?.PAXGUSD;
+          if (p && p.c && p.c[0]) {
+            price = parseFloat(p.c[0]);
+            high24h = parseFloat(p.h[0]) || price + 15;
+            low24h = parseFloat(p.l[0]) || price - 15;
+            change24h = price - parseFloat(p.o || price);
+            changePercent24h = parseFloat(p.o) ? ((change24h / parseFloat(p.o)) * 100) : 0;
+            activeFeedSource = "Kraken Institutional (PAXG/USD)";
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // Tier 4: CoinGecko Public Feed
+    if (!price) {
+      try {
+        const cgRes = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true");
+        if (cgRes.ok) {
+          const cd = await cgRes.json();
+          if (cd && cd["pax-gold"] && cd["pax-gold"].usd) {
+            price = cd["pax-gold"].usd;
+            changePercent24h = cd["pax-gold"].usd_24h_change || 0;
+            change24h = (price * changePercent24h) / 100;
+            high24h = price * 1.015;
+            low24h = price * 0.985;
+            activeFeedSource = "CoinGecko (PAX Gold USD)";
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
 
     clearTimeout(timer);
 
-    let price = 4358.50;
-    let high24h = 4375.0;
-    let low24h = 4345.0;
-    let change24h = 12.5;
-    let changePercent24h = 0.28;
-
-    if (tickerRes.status === "fulfilled" && tickerRes.value.ok) {
-      const d = await tickerRes.value.json();
-      if (d && d.lastPrice) {
-        price = parseFloat(d.lastPrice);
-        high24h = parseFloat(d.highPrice) || price + 15;
-        low24h = parseFloat(d.lowPrice) || price - 15;
-        change24h = parseFloat(d.priceChange) || 0;
-        changePercent24h = parseFloat(d.priceChangePercent) || 0;
-      }
+    if (!price || isNaN(price)) {
+      return null;
     }
 
     const bid = Number((price - 0.25).toFixed(2));
@@ -770,47 +988,8 @@ export async function fetchBinanceGoldDirect(interval: string = "5m") {
       changePercent24h,
       volume24h: 5840.0,
       timestamp: Date.now(),
-      source: "BINANCE:PAXGUSDT (Live Gold Spot)",
+      source: activeFeedSource,
     };
-
-    let depthData = null;
-    if (depthRes.status === "fulfilled" && depthRes.value.ok) {
-      const d = await depthRes.value.json();
-      if (d.bids && d.asks) {
-        depthData = {
-          bids: d.bids.map((b: [string, string]) => [parseFloat(b[0]), parseFloat(b[1])]),
-          asks: d.asks.map((a: [string, string]) => [parseFloat(a[0]), parseFloat(a[1])]),
-        };
-      }
-    }
-
-    let tradesData: any[] = [];
-    if (tradesRes.status === "fulfilled" && tradesRes.value.ok) {
-      const d = await tradesRes.value.json();
-      tradesData = d.map((t: any) => ({
-        id: String(t.id),
-        price: parseFloat(t.price),
-        qty: parseFloat(t.qty),
-        isBuyerMaker: t.isBuyerMaker,
-        side: t.isBuyerMaker ? "sell" : "buy",
-        time: t.time,
-        isWhale: parseFloat(t.qty) >= 4,
-      }));
-    }
-
-    let klinesData: any[] = [];
-    if (klinesRes.status === "fulfilled" && klinesRes.value.ok) {
-      const d = await klinesRes.value.json();
-      klinesData = d.map((k: any) => ({
-        time: k[0],
-        open: parseFloat(k[1]),
-        high: parseFloat(k[2]),
-        low: parseFloat(k[3]),
-        close: parseFloat(k[4]),
-        volume: parseFloat(k[5]),
-        takerBuyBaseVolume: parseFloat(k[9]),
-      }));
-    }
 
     return {
       price,
@@ -823,7 +1002,7 @@ export async function fetchBinanceGoldDirect(interval: string = "5m") {
       changePercent24h,
       volume24h: 5840.0,
       timestamp: Date.now(),
-      source: "XAU/USD Live Interbank Feed",
+      source: activeFeedSource,
       depth: depthData || { bids: [], asks: [] },
       trades: tradesData,
       klines: klinesData,
