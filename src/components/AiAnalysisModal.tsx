@@ -3,6 +3,7 @@ import {
   Award,
   BarChart2,
   Cpu,
+  Crosshair,
   Flame,
   RotateCw,
   ShieldCheck,
@@ -25,6 +26,8 @@ import { CorrelationWidget } from "./CorrelationWidget";
 import { generateDualSmartLevels, getMacroCorrelationData } from "../services/correlationService";
 import { recordTradeOutcome, getLearningStats } from "../services/goldService";
 import { generateTpoMarketProfile } from "../services/marketProfileService";
+import { SniperRecommendationCard } from "./SniperRecommendationCard";
+import { generateSniperPrecisionSetup } from "../services/sniperPrecisionService";
 
 interface AiAnalysisModalProps {
   isOpen: boolean;
@@ -51,10 +54,21 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   activeModel = "Gemini 3.6 Flash",
   hasCustomKey = false,
 }) => {
-  const [modalTab, setModalTab] = useState<"overview" | "dual_levels" | "tpo_profile" | "correlation">("overview");
+  const [modalTab, setModalTab] = useState<"overview" | "sniper" | "tpo_profile" | "dual_levels" | "correlation">("overview");
   const [feedbackGiven, setFeedbackGiven] = useState<string | null>(null);
   const learningStats = analysis?.learningStats || getLearningStats();
   const tpoReport = useMemo(() => generateTpoMarketProfile(currentPrice), [currentPrice]);
+  const activeMacro = macroReport || getMacroCorrelationData(currentPrice);
+
+  const sniperSetup = useMemo(() => {
+    if (analysis?.sniperSetup) return analysis.sniperSetup;
+    return generateSniperPrecisionSetup({
+      currentPrice,
+      tpoReport,
+      macroReport: activeMacro,
+      aiBias: analysis?.bias,
+    });
+  }, [analysis, currentPrice, tpoReport, activeMacro]);
 
   const handleRecordOutcome = (outcome: "win" | "loss") => {
     if (!analysis) return;
@@ -82,11 +96,9 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
     analysis?.bias?.includes("هابط") ||
     analysis?.bias?.toLowerCase().includes("bearish");
 
-  // Fallback or computed dual levels and macro report
+  // Fallback or computed dual levels
   const dualLevels =
     analysis?.dualSmartLevels || generateDualSmartLevels(currentPrice);
-  const activeMacro =
-    macroReport || getMacroCorrelationData(currentPrice);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
@@ -163,6 +175,21 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
           </button>
 
           <button
+            onClick={() => setModalTab("sniper")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              modalTab === "sniper"
+                ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-xs font-black"
+                : "text-emerald-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <Crosshair className="w-3.5 h-3.5" />
+            <span>التوصية القناصة بالملي (Sniper Setup)</span>
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-mono font-bold">
+              دقيقة جداً
+            </span>
+          </button>
+
+          <button
             onClick={() => setModalTab("tpo_profile")}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
               modalTab === "tpo_profile"
@@ -228,6 +255,14 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                   يقوم الذكاء الاصطناعي برصد اختلالات الدلتا ومستويات الـ BSL/SSL وحساب سيناريوهات الاختراق والارتداد
                 </p>
               </div>
+            </div>
+          ) : modalTab === "sniper" ? (
+            <div className="space-y-4">
+              <SniperRecommendationCard
+                setup={sniperSetup}
+                currentPrice={currentPrice}
+                onRecordFeedback={handleRecordOutcome}
+              />
             </div>
           ) : modalTab === "dual_levels" ? (
             <DualSmartLevelsWidget
@@ -502,67 +537,43 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                 <p className="text-slate-300 leading-relaxed text-xs">{analysis.orderFlowInsight}</p>
               </div>
 
-              {analysis.setup && (
-                <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 via-slate-900 to-slate-900 border border-amber-500/30 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-amber-300 font-bold text-xs">
-                      <ShieldCheck className="w-4 h-4 text-amber-400" />
-                      <span>خطة التداول المؤسسية المقترحة (Institutional Setup)</span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 font-bold text-[11px]">
-                      {analysis.setup.type}
-                    </span>
-                  </div>
+              {/* Ultra-Precise Sniper Recommendation Card */}
+              <div className="space-y-2">
+                <SniperRecommendationCard
+                  setup={sniperSetup}
+                  currentPrice={currentPrice}
+                  onRecordFeedback={handleRecordOutcome}
+                />
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 font-['JetBrains_Mono']">
-                    <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 font-['Cairo'] block">نطاق الدخول</span>
-                      <span className="text-xs font-bold text-white">{analysis.setup.entryZone}</span>
-                    </div>
-                    <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                      <span className="text-[10px] text-rose-400 font-['Cairo'] block">وقف الخسارة (SL)</span>
-                      <span className="text-xs font-bold text-rose-300">{analysis.setup.stopLoss}</span>
-                    </div>
-                    <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                      <span className="text-[10px] text-emerald-400 font-['Cairo'] block">الهدف الأول (TP1)</span>
-                      <span className="text-xs font-bold text-emerald-300">{analysis.setup.takeProfit1}</span>
-                    </div>
-                    <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                      <span className="text-[10px] text-amber-400 font-['Cairo'] block">نسبة العائد/المخاطرة</span>
-                      <span className="text-xs font-bold text-amber-300">{analysis.setup.riskRewardRatio}</span>
-                    </div>
+                {/* Self-Learning Feedback Buttons */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+                    <BrainCircuit className="w-4 h-4 text-amber-400 animate-pulse" />
+                    <span>تقييم الصفقة لتعليم الذكاء الاصطناعي (معدل النجاح: <strong className="text-emerald-400 font-mono">{learningStats.winRate}%</strong>):</span>
                   </div>
-
-                  {/* Self-Learning Feedback Buttons */}
-                  <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
-                      <BrainCircuit className="w-4 h-4 text-amber-400 animate-pulse" />
-                      <span>تقييم الصفقة لتعليم الذكاء الاصطناعي (معدل النجاح: <strong className="text-emerald-400 font-mono">{learningStats.winRate}%</strong>):</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleRecordOutcome("win")}
-                        className="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>صفقة ناجحة (Win)</span>
-                      </button>
-                      <button
-                        onClick={() => handleRecordOutcome("loss")}
-                        className="px-3 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
-                      >
-                        <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                        <span>صفقة خاسرة (Loss)</span>
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleRecordOutcome("win")}
+                      className="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>صفقة ناجحة (Win)</span>
+                    </button>
+                    <button
+                      onClick={() => handleRecordOutcome("loss")}
+                      className="px-3 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                    >
+                      <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                      <span>صفقة خاسرة (Loss)</span>
+                    </button>
                   </div>
-                  {feedbackGiven && (
-                    <div className="p-2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-200 text-center text-[11px] font-bold animate-in fade-in">
-                      {feedbackGiven}
-                    </div>
-                  )}
                 </div>
-              )}
+                {feedbackGiven && (
+                  <div className="p-2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-200 text-center text-[11px] font-bold animate-in fade-in">
+                    {feedbackGiven}
+                  </div>
+                )}
+              </div>
 
               <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-start gap-2.5 text-amber-200 text-[11px]">
                 <TriangleAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />

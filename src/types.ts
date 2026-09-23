@@ -138,7 +138,8 @@ export type ViewMode =
   | "tradingview"
   | "optionflow"
   | "futures"
-  | "marketprofile";
+  | "marketprofile"
+  | "signals";
 
 export interface TpoLevelData {
   price: number;
@@ -360,6 +361,56 @@ export interface TradeOutcomeRecord {
   notes?: string;
 }
 
+export interface SniperTpTarget {
+  price: number;
+  distancePips: number;
+  closeVolumePercent: number; // e.g. 50%
+  labelAr: string;
+  instructionAr: string;
+}
+
+export interface SniperPrecisionSetup {
+  id: string;
+  orderType: "BUY LIMIT" | "SELL LIMIT" | "BUY STOP" | "SELL STOP" | "MARKET BUY" | "MARKET SELL";
+  direction: "BUY" | "SELL";
+  grade: "A+ Institutional Sniper" | "A High Probability" | "B Scalp Rejection";
+  qualityScore: number; // 0 - 100
+  titleAr: string;
+  confluencePoints: string[];
+  
+  // Exact Execution Parameters down to the cent
+  optimalEntryPrice: number;
+  entryZoneRange: { min: number; max: number };
+  exactTriggerConditionAr: string;
+  
+  // Exact Stop Loss
+  exactStopLoss: number;
+  slDistancePips: number;
+  slStructuralRationaleAr: string;
+  
+  // Multi-tier targets
+  tp1: SniperTpTarget;
+  tp2: SniperTpTarget;
+  tp3: SniperTpTarget;
+  
+  riskRewardRatio: string;
+  riskRewardValue: number;
+  
+  // Capital Management & Lot Sizing
+  recommendedLotPer1000: number; // e.g. 0.05 lot per $1000
+  maxRiskPercent: number; // e.g. 1.5%
+  
+  // Invalidation & Session
+  invalidationLevel: number;
+  invalidationConditionAr: string;
+  bestSessionWindowAr: string;
+  
+  // Copyable MT4/MT5 signal command
+  mtCommand: string;
+  status: "active" | "triggered" | "tp1_hit" | "tp2_hit" | "cancelled";
+  timestamp: number;
+}
+
 export interface AiAnalysisResult {
   bias: string;
   confidenceScore: number;
@@ -383,6 +434,7 @@ export interface AiAnalysisResult {
     takeProfit2: string;
     riskRewardRatio: string;
   };
+  sniperSetup?: SniperPrecisionSetup;
   keyAdvice: string;
   learningStats?: {
     totalRecorded: number;

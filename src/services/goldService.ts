@@ -2,6 +2,7 @@ import { FootprintBar, LiquidityZone, TradeItem, DOMDepthData, DOMLevel, GoldQuo
 import { generateDualSmartLevels, getMacroCorrelationData } from "./correlationService";
 import { directGeminiAnalyzeOrderFlow } from "./geminiClientService";
 import { generateTpoMarketProfile } from "./marketProfileService";
+import { generateSniperPrecisionSetup } from "./sniperPrecisionService";
 
 export function getStoredTradeOutcomes(): TradeOutcomeRecord[] {
   try {
@@ -1138,6 +1139,13 @@ export async function analyzeOrderFlowWithGemini(params: {
             takeProfit2: data.tradeSetup?.takeProfit2 || `$${(price + 16.0).toFixed(2)}`,
             riskRewardRatio: data.tradeSetup?.riskReward || "1 : 3.1",
           },
+          sniperSetup: generateSniperPrecisionSetup({
+            currentPrice: price,
+            tpoReport,
+            macroReport: macro,
+            aiBias: isBullish ? "BUY" : "SELL",
+            orderFlowDelta: params.delta,
+          }),
           keyAdvice: `🧠 [Gemini المؤسسي المباشر]: ${data.warningsAr?.[0] || "التزم بوقف الخسارة المحكم المعتمد على مستويات POC والسيولة المؤسسية."}`,
           learningStats: learning,
           marketProfile: tpoReport,
@@ -1199,6 +1207,13 @@ export async function analyzeOrderFlowWithGemini(params: {
             takeProfit2: directData.tradeSetup?.takeProfit2 || `$${(price + 16.0).toFixed(2)}`,
             riskRewardRatio: directData.tradeSetup?.riskReward || "1 : 3.1",
           },
+          sniperSetup: generateSniperPrecisionSetup({
+            currentPrice: price,
+            tpoReport,
+            macroReport: macro,
+            aiBias: isBullish ? "BUY" : "SELL",
+            orderFlowDelta: params.delta,
+          }),
           keyAdvice: `🧠 [Google Gemini مباشر على التطبيق]: ${directData.warningsAr?.[0] || "التزم بوقف الخسارة المحكم المعتمد على مستويات POC والسيولة المؤسسية."}`,
           learningStats: learning,
           marketProfile: tpoReport,
@@ -1246,6 +1261,13 @@ export async function analyzeOrderFlowWithGemini(params: {
         : `$${(price - 16.0).toFixed(2)} (حوض SSL الموسع)`,
       riskRewardRatio: "1 : 3.12",
     },
+    sniperSetup: generateSniperPrecisionSetup({
+      currentPrice: price,
+      tpoReport,
+      macroReport: macro,
+      aiBias: isBullish ? "BUY" : "SELL",
+      orderFlowDelta: params.delta,
+    }),
     keyAdvice: `🧠 [التعلم الذاتي النشط]: ${learning.adaptiveAdjustmentAr} • التزم دائماً بإدارة المخاطر ودقة الملي.`,
     learningStats: learning,
     marketProfile: tpoReport,

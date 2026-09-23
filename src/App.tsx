@@ -41,6 +41,7 @@ import { TradingViewWidget } from "./components/TradingViewWidget";
 import { OptionFlowView } from "./components/OptionFlowView";
 import { FuturesAnalysisView } from "./components/FuturesAnalysisView";
 import { MarketProfileView } from "./components/MarketProfileView";
+import { SniperSignalsView } from "./components/SniperSignalsView";
 import { LiquidityZonesList } from "./components/LiquidityZonesList";
 import { DomLadder } from "./components/DomLadder";
 import { TimeAndSales } from "./components/TimeAndSales";
@@ -443,6 +444,15 @@ export function App() {
           )}
           {viewMode === "marketprofile" && (
             <MarketProfileView currentPrice={quote.price} bars={footprintBars} />
+          )}
+          {viewMode === "signals" && (
+            <SniperSignalsView
+              currentPrice={quote.price}
+              bars={footprintBars}
+              liquidityZones={liquidityZones}
+              onRefresh={handleTriggerAiAnalysis}
+              isAiLoading={isAiLoading}
+            />
           )}
           {viewMode === "tradingview" && <TradingViewWidget timeframe={timeframe} />}
         </main>

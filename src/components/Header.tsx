@@ -4,6 +4,7 @@ import {
   BarChart2,
   ChartLine,
   Cpu,
+  Crosshair,
   Flame,
   Layers,
   RotateCw,
@@ -236,6 +237,18 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* View Mode Buttons */}
           <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 flex-wrap">
+            <button
+              onClick={() => onViewModeChange("signals")}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
+                viewMode === "signals"
+                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm font-bold"
+                  : "text-emerald-400 hover:text-emerald-300 hover:bg-slate-800/60"
+              }`}
+              title="التوصيات القناصة فائقة الدقة (Sniper Precision Signals)"
+            >
+              <Crosshair className="w-3.5 h-3.5" />
+              <span>التوصيات القناصة</span>
+            </button>
             <button
               onClick={() => onViewModeChange("footprint")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
