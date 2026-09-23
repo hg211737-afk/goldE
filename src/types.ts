@@ -131,7 +131,69 @@ export interface FusionParadigmInfo {
 
 export type Timeframe = "1m" | "3m" | "5m" | "15m" | "1h" | "4h";
 
-export type ViewMode = "footprint" | "heatmap" | "cvd" | "tradingview" | "optionflow" | "futures";
+export type ViewMode =
+  | "footprint"
+  | "heatmap"
+  | "cvd"
+  | "tradingview"
+  | "optionflow"
+  | "futures"
+  | "marketprofile";
+
+export interface TpoLevelData {
+  price: number;
+  letters: string[];
+  tpoCount: number;
+  isPoc: boolean;
+  isValueArea: boolean;
+  isInitialBalance: boolean;
+  isSinglePrint: boolean;
+  volume: number;
+}
+
+export interface VwapBandsData {
+  vwap: number;
+  upper1: number;
+  upper2: number;
+  lower1: number;
+  lower2: number;
+  currentDeviation: number; // e.g. +1.42 sigma
+  statusAr: string;
+}
+
+export interface AbsorptionTrapMetrics {
+  trappedBuyersOz: number;
+  trappedSellersOz: number;
+  passiveAbsorptionRatio: number; // 0 to 100%
+  dominantTrap: "trapped_buyers" | "trapped_sellers" | "neutral";
+  trapSignalAr: string;
+  trapAlertPrice: number;
+  confluenceScore: number; // 0 - 100
+}
+
+export interface TpoMarketProfileReport {
+  timestamp: number;
+  vah: number; // Value Area High
+  val: number; // Value Area Low
+  poc: number; // Point of Control
+  initialBalanceHigh: number;
+  initialBalanceLow: number;
+  initialBalanceRange: number;
+  dayType: "Normal Day" | "Trend Day" | "Normal Variation Day" | "Neutral Day" | "Double Distribution";
+  dayTypeAr: string;
+  isPriceInValue: boolean;
+  valueAreaPercent: number; // 70%
+  poorHighDetected: boolean;
+  poorLowDetected: boolean;
+  poorHighPrice?: number;
+  poorLowPrice?: number;
+  singlePrints: { price: number; letter: string }[];
+  vwapBands: VwapBandsData;
+  absorption: AbsorptionTrapMetrics;
+  auctionBiasAr: string;
+  keyActionRecommendationAr: string;
+  levels: TpoLevelData[];
+}
 
 export type SidebarTab = "liquidity" | "correlation" | "dom" | "tape";
 
@@ -327,5 +389,6 @@ export interface AiAnalysisResult {
     winRate: number;
     adaptiveAdjustmentAr: string;
   };
+  marketProfile?: TpoMarketProfileReport;
 }
 

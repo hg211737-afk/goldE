@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Activity,
+  BarChart2,
   ChartLine,
   Cpu,
   Flame,
@@ -270,6 +271,18 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Activity className="w-3.5 h-3.5" />
               <span>CVD</span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("marketprofile")}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
+                viewMode === "marketprofile"
+                  ? "bg-violet-600 text-white shadow-sm font-bold"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+              title="بروفايل السوق TPO ومستويات الـ Value Area والفاب المؤسسي"
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              <span>بروفايل TPO</span>
             </button>
             <button
               onClick={() => onViewModeChange("optionflow")}

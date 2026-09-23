@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Award,
+  BarChart2,
   Cpu,
+  Flame,
   RotateCw,
   ShieldCheck,
   Target,
@@ -22,6 +24,7 @@ import { DualSmartLevelsWidget } from "./DualSmartLevelsWidget";
 import { CorrelationWidget } from "./CorrelationWidget";
 import { generateDualSmartLevels, getMacroCorrelationData } from "../services/correlationService";
 import { recordTradeOutcome, getLearningStats } from "../services/goldService";
+import { generateTpoMarketProfile } from "../services/marketProfileService";
 
 interface AiAnalysisModalProps {
   isOpen: boolean;
@@ -48,9 +51,10 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   activeModel = "Gemini 3.6 Flash",
   hasCustomKey = false,
 }) => {
-  const [modalTab, setModalTab] = useState<"overview" | "dual_levels" | "correlation">("overview");
+  const [modalTab, setModalTab] = useState<"overview" | "dual_levels" | "tpo_profile" | "correlation">("overview");
   const [feedbackGiven, setFeedbackGiven] = useState<string | null>(null);
   const learningStats = analysis?.learningStats || getLearningStats();
+  const tpoReport = useMemo(() => generateTpoMarketProfile(currentPrice), [currentPrice]);
 
   const handleRecordOutcome = (outcome: "win" | "loss") => {
     if (!analysis) return;
@@ -159,6 +163,21 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
           </button>
 
           <button
+            onClick={() => setModalTab("tpo_profile")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              modalTab === "tpo_profile"
+                ? "bg-amber-500 text-slate-950 shadow-xs"
+                : "text-slate-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <BarChart2 className="w-3.5 h-3.5" />
+            <span>بروفايل TPO والمصائد (Value Area & Traps)</span>
+            <span className="text-[10px] bg-violet-500/20 text-violet-300 px-1.5 py-0.2 rounded font-mono">
+              TPO
+            </span>
+          </button>
+
+          <button
             onClick={() => setModalTab("dual_levels")}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
               modalTab === "dual_levels"
@@ -216,6 +235,114 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
               lowerLevel={dualLevels.lowerLevel}
               currentPrice={currentPrice}
             />
+          ) : modalTab === "tpo_profile" ? (
+            <div className="space-y-4">
+              {/* TPO Top Card */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-violet-950/40 via-slate-900 to-slate-900 border border-violet-500/30 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-violet-600/20 text-violet-400 border border-violet-500/30">
+                    <BarChart2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                      بروفايل السوق المؤسسي (TPO Market Profile & Traps)
+                      <span className="text-[10px] bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded-full font-mono">
+                        {tpoReport.dayType}
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      {tpoReport.dayTypeAr} • نطاق التوازن الأولي (IB): ${tpoReport.initialBalanceLow} - ${tpoReport.initialBalanceHigh}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 block">توافق قوى المزاد (Confluence):</span>
+                  <span className="text-sm font-black text-amber-400 font-mono">
+                    {tpoReport.absorption.confluenceScore}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Value Area & VWAP Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-3 rounded-xl bg-slate-900/90 border border-rose-500/30">
+                  <span className="text-[10px] text-rose-300 font-bold block">سقف القيمة (VAH 70%)</span>
+                  <span className="text-base font-black text-white font-mono">${tpoReport.vah.toFixed(2)}</span>
+                  <span className="text-[9px] text-slate-400 block mt-0.5">مقاومة المزاد المؤسسية</span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/30">
+                  <span className="text-[10px] text-emerald-300 font-bold block">قاع القيمة (VAL 70%)</span>
+                  <span className="text-base font-black text-white font-mono">${tpoReport.val.toFixed(2)}</span>
+                  <span className="text-[9px] text-slate-400 block mt-0.5">دعم المزاد المؤسسي</span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-900/90 border border-amber-500/30">
+                  <span className="text-[10px] text-amber-300 font-bold block">نقطة التحكم (POC)</span>
+                  <span className="text-base font-black text-amber-300 font-mono">${tpoReport.poc.toFixed(2)}</span>
+                  <span className="text-[9px] text-slate-400 block mt-0.5">أعلى زمن وأحجام تداول</span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-900/90 border border-sky-500/30">
+                  <span className="text-[10px] text-sky-300 font-bold block">خط الفاب (VWAP)</span>
+                  <span className="text-base font-black text-sky-300 font-mono">${tpoReport.vwapBands.vwap.toFixed(2)}</span>
+                  <span className="text-[9px] text-slate-400 block mt-0.5 font-mono">
+                    الانحراف: {tpoReport.vwapBands.currentDeviation >= 0 ? "+" : ""}{tpoReport.vwapBands.currentDeviation}σ
+                  </span>
+                </div>
+              </div>
+
+              {/* Absorption & Traps Breakdown */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-[#121024] to-[#0c0e18] border border-amber-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <Flame className="w-4 h-4 text-amber-400" />
+                    كاشف مصائد المتداولين والامتصاص الصامت (Trapped Traders & Iceberg Absorption)
+                  </span>
+                  <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full">
+                    {tpoReport.absorption.passiveAbsorptionRatio}% استيعاب صانع السوق
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded-lg bg-slate-950/80 border border-rose-500/20">
+                    <span className="text-slate-400 block text-[11px]">مشترون محاصرون في القمة (Trapped Buyers):</span>
+                    <span className="text-rose-400 font-black text-sm font-mono mt-0.5 block">
+                      {tpoReport.absorption.trappedBuyersOz} Oz
+                    </span>
+                    <span className="text-[10px] text-slate-400 block mt-1">
+                      حجم شرائي تم ابتلاعه عبر أوامر بيع مخفية عند القمة
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-slate-950/80 border border-emerald-500/20">
+                    <span className="text-slate-400 block text-[11px]">بائعون محاصرون في القاع (Trapped Sellers):</span>
+                    <span className="text-emerald-400 font-black text-sm font-mono mt-0.5 block">
+                      {tpoReport.absorption.trappedSellersOz} Oz
+                    </span>
+                    <span className="text-[10px] text-slate-400 block mt-1">
+                      حجم بيع تم امتصاصه عبر جدار طلبات Iceberg عند القاع
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-slate-950/90 border border-slate-800 text-xs text-slate-200 leading-relaxed">
+                  <strong className="text-amber-400 block mb-1 font-bold">إشارة الرصد اللحظية:</strong>
+                  {tpoReport.absorption.trapSignalAr}
+                </div>
+              </div>
+
+              {/* Action Playbook */}
+              <div className="p-3.5 rounded-xl bg-violet-950/20 border border-violet-500/30 text-xs space-y-1.5">
+                <span className="text-violet-300 font-bold block text-xs">
+                  خطة التنفيذ وفق قواعد المزاد (Auction Playbook):
+                </span>
+                <p className="text-slate-300 leading-relaxed">
+                  {tpoReport.keyActionRecommendationAr}
+                </p>
+              </div>
+            </div>
           ) : modalTab === "correlation" ? (
             <div className="h-[480px]">
               <CorrelationWidget
@@ -299,6 +426,32 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                 </div>
                 <span className="text-[11px] text-amber-400 font-bold shrink-0">
                   عرض ويدجت الارتباط ←
+                </span>
+              </div>
+
+              {/* TPO & Traps Snapshot Bar */}
+              <div
+                onClick={() => setModalTab("tpo_profile")}
+                className="p-3 rounded-xl bg-gradient-to-r from-violet-950/30 via-slate-900 to-slate-900 border border-violet-500/30 hover:border-violet-400/60 transition-all cursor-pointer flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-violet-600/20 text-violet-400 border border-violet-500/30">
+                    <BarChart2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-white flex items-center gap-2">
+                      بروفايل TPO والمصائد: {tpoReport.dayTypeAr.split(" (")[0]}
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-mono font-bold">
+                        {tpoReport.absorption.passiveAbsorptionRatio}% امتصاص
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-slate-400 line-clamp-1">
+                      VAH: ${tpoReport.vah.toFixed(1)} | VAL: ${tpoReport.val.toFixed(1)} | POC: ${tpoReport.poc.toFixed(1)} • {tpoReport.absorption.trapSignalAr.slice(0, 75)}...
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[11px] text-violet-400 font-bold shrink-0">
+                  تفاصيل TPO ←
                 </span>
               </div>
 

@@ -1,6 +1,7 @@
 import { FootprintBar, LiquidityZone, TradeItem, DOMDepthData, DOMLevel, GoldQuote, AiAnalysisResult, TradeOutcomeRecord } from "../types";
 import { generateDualSmartLevels, getMacroCorrelationData } from "./correlationService";
 import { directGeminiAnalyzeOrderFlow } from "./geminiClientService";
+import { generateTpoMarketProfile } from "./marketProfileService";
 
 export function getStoredTradeOutcomes(): TradeOutcomeRecord[] {
   try {
@@ -817,26 +818,49 @@ export async function fetchBinanceGoldDirect(interval: string = "5m") {
     let klinesData: any[] = [];
     let activeFeedSource = "Binance Vision (XAU/USD Live)";
 
-    // Tier 1: Binance Vision (worldwide unblocked)
+    // Tier 1: Binance Vision + Real Spot Gold-API (Worldwide Unblocked)
     try {
-      const [tickerRes, depthRes, klinesRes, tradesRes] = await Promise.allSettled([
+      const [tickerRes, depthRes, klinesRes, tradesRes, goldApiRes] = await Promise.allSettled([
         fetch("https://data-api.binance.vision/api/v3/ticker/24hr?symbol=PAXGUSDT", { signal: controller.signal }),
         fetch("https://data-api.binance.vision/api/v3/depth?symbol=PAXGUSDT&limit=30", { signal: controller.signal }),
         fetch(`https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=${interval}&limit=50`, {
           signal: controller.signal,
         }),
         fetch("https://data-api.binance.vision/api/v3/trades?symbol=PAXGUSDT&limit=30", { signal: controller.signal }),
+        fetch("https://api.gold-api.com/price/XAU", { signal: controller.signal }),
       ]);
+
+      let goldApiSpotPrice = 0;
+      if (goldApiRes.status === "fulfilled" && goldApiRes.value.ok) {
+        try {
+          const ga = await goldApiRes.value.json();
+          if (ga && typeof ga.price === "number" && ga.price > 1000) {
+            goldApiSpotPrice = ga.price;
+          }
+        } catch {
+          // ignore
+        }
+      }
 
       if (tickerRes.status === "fulfilled" && tickerRes.value.ok) {
         const d = await tickerRes.value.json();
         if (d && d.lastPrice) {
-          price = parseFloat(d.lastPrice);
+          price = goldApiSpotPrice > 0 ? goldApiSpotPrice : parseFloat(d.lastPrice);
           high24h = parseFloat(d.highPrice) || price + 15;
           low24h = parseFloat(d.lowPrice) || price - 15;
           change24h = parseFloat(d.priceChange) || 0;
           changePercent24h = parseFloat(d.priceChangePercent) || 0;
+          activeFeedSource = goldApiSpotPrice > 0
+            ? "Gold-API Spot XAU + Binance OrderFlow"
+            : "Binance Vision (XAU/USD Live)";
         }
+      } else if (goldApiSpotPrice > 0) {
+        price = goldApiSpotPrice;
+        high24h = price * 1.015;
+        low24h = price * 0.985;
+        change24h = 0;
+        changePercent24h = 0;
+        activeFeedSource = "Gold-API (XAU/USD Real Spot)";
       }
 
       if (depthRes.status === "fulfilled" && depthRes.value.ok) {
@@ -1031,6 +1055,7 @@ export async function analyzeOrderFlowWithGemini(params: {
   const macro = getMacroCorrelationData(price);
   const dualLevels = generateDualSmartLevels(price);
   const learning = getLearningStats();
+  const tpoReport = generateTpoMarketProfile(price);
 
   try {
     const controller = new AbortController();
@@ -1058,6 +1083,16 @@ export async function analyzeOrderFlowWithGemini(params: {
       macroCorrelation: {
         dxyAnalysis: macro.dxyAnalysisAr,
         sentiment: macro.overallSentimentAr,
+      },
+      marketProfile: {
+        dayType: tpoReport.dayTypeAr,
+        vah: tpoReport.vah,
+        val: tpoReport.val,
+        poc: tpoReport.poc,
+        vwap: tpoReport.vwapBands.vwap,
+        trappedBuyers: tpoReport.absorption.trappedBuyersOz,
+        trappedSellers: tpoReport.absorption.trappedSellersOz,
+        trapSignal: tpoReport.absorption.trapSignalAr,
       },
     };
 
@@ -1105,6 +1140,7 @@ export async function analyzeOrderFlowWithGemini(params: {
           },
           keyAdvice: `🧠 [Gemini المؤسسي المباشر]: ${data.warningsAr?.[0] || "التزم بوقف الخسارة المحكم المعتمد على مستويات POC والسيولة المؤسسية."}`,
           learningStats: learning,
+          marketProfile: tpoReport,
         };
       }
     }
@@ -1165,6 +1201,7 @@ export async function analyzeOrderFlowWithGemini(params: {
           },
           keyAdvice: `🧠 [Google Gemini مباشر على التطبيق]: ${directData.warningsAr?.[0] || "التزم بوقف الخسارة المحكم المعتمد على مستويات POC والسيولة المؤسسية."}`,
           learningStats: learning,
+          marketProfile: tpoReport,
         };
       }
     } catch (directErr) {
@@ -1211,6 +1248,7 @@ export async function analyzeOrderFlowWithGemini(params: {
     },
     keyAdvice: `🧠 [التعلم الذاتي النشط]: ${learning.adaptiveAdjustmentAr} • التزم دائماً بإدارة المخاطر ودقة الملي.`,
     learningStats: learning,
+    marketProfile: tpoReport,
   };
 }
 

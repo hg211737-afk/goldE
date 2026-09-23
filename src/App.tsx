@@ -40,6 +40,7 @@ import { CvdAnalysisView } from "./components/CvdAnalysisView";
 import { TradingViewWidget } from "./components/TradingViewWidget";
 import { OptionFlowView } from "./components/OptionFlowView";
 import { FuturesAnalysisView } from "./components/FuturesAnalysisView";
+import { MarketProfileView } from "./components/MarketProfileView";
 import { LiquidityZonesList } from "./components/LiquidityZonesList";
 import { DomLadder } from "./components/DomLadder";
 import { TimeAndSales } from "./components/TimeAndSales";
@@ -380,7 +381,7 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] w-screen overflow-hidden bg-[#0a0d14] text-slate-100 font-['Cairo'] select-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+    <div className="flex flex-col min-h-[100dvh] h-auto lg:h-[100dvh] w-full overflow-x-hidden overflow-y-auto lg:overflow-hidden bg-[#0a0d14] text-slate-100 font-['Cairo'] select-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <OfflineNotice />
       <Header
         quote={quote}
@@ -409,9 +410,9 @@ export function App() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden p-1.5 sm:p-3 gap-1.5 sm:gap-3">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden p-1.5 sm:p-3 gap-1.5 sm:gap-3">
         <main
-          className={`flex-1 flex flex-col h-full min-h-[300px] overflow-hidden ${
+          className={`flex-1 flex flex-col min-h-[460px] sm:min-h-[520px] lg:min-h-0 lg:h-full overflow-hidden ${
             mobileTab === "chart" ? "flex" : "hidden lg:flex"
           }`}
         >
@@ -440,11 +441,14 @@ export function App() {
           {viewMode === "futures" && (
             <FuturesAnalysisView currentPrice={quote.price} />
           )}
+          {viewMode === "marketprofile" && (
+            <MarketProfileView currentPrice={quote.price} bars={footprintBars} />
+          )}
           {viewMode === "tradingview" && <TradingViewWidget timeframe={timeframe} />}
         </main>
 
         <aside
-          className={`w-full lg:w-80 xl:w-96 flex flex-col shrink-0 bg-[#111622] rounded-xl border border-slate-800/80 overflow-hidden ${
+          className={`w-full lg:w-80 xl:w-96 flex flex-col shrink-0 bg-[#111622] rounded-xl border border-slate-800/80 overflow-hidden min-h-[460px] lg:min-h-0 ${
             mobileTab === "chart" ? "hidden lg:flex lg:h-full" : "flex flex-1 h-full"
           }`}
         >

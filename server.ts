@@ -104,17 +104,30 @@ app.get("/api/gold/live", async (req, res) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3500);
 
-    const [priceRes, tickerRes, depthRes, tradesRes, klinesRes] = await Promise.allSettled([
+    const [priceRes, tickerRes, depthRes, tradesRes, klinesRes, goldApiRes] = await Promise.allSettled([
       fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`, { signal: controller.signal }),
       fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`, { signal: controller.signal }),
       fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=25`, { signal: controller.signal }),
       fetch(`https://api.binance.com/api/v3/trades?symbol=${symbol}&limit=30`, { signal: controller.signal }),
       fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=40`, { signal: controller.signal }),
+      fetch(`https://api.gold-api.com/price/XAU`, { signal: controller.signal }),
     ]);
     clearTimeout(timeout);
 
     let price = 0;
+    let goldApiPrice = 0;
     let source = `BINANCE:${symbol} (XAU/USD Live Spot Gold)`;
+
+    if (goldApiRes.status === "fulfilled" && goldApiRes.value.ok) {
+      try {
+        const gaData = await goldApiRes.value.json();
+        if (gaData && typeof gaData.price === "number" && gaData.price > 1000) {
+          goldApiPrice = gaData.price;
+        }
+      } catch {
+        // ignore
+      }
+    }
 
     if (priceRes.status === "fulfilled" && priceRes.value.ok) {
       const pData = await priceRes.value.json();
@@ -127,6 +140,12 @@ app.get("/api/gold/live", async (req, res) => {
       if (!price && ticker?.lastPrice) {
         price = parseFloat(ticker.lastPrice);
       }
+    }
+
+    // If spot XAU is preferred or requested, prioritize true gold-api spot price
+    if (goldApiPrice > 0 && (rawSymbol === "XAUUSD" || rawSymbol === "GOLD" || rawSymbol === "XAU" || !price)) {
+      price = goldApiPrice;
+      source = "Gold-API (XAU/USD Real Spot Gold)";
     }
 
     // Fallback to CoinGecko if Binance fails
@@ -323,13 +342,16 @@ app.post("/api/gemini/analyze-orderflow", async (req, res) => {
     }
 
     const systemInstruction = `
-أنت كبير محللي تدفق الأوامر والسيولة المؤسسية للذهب (XAU/USD Advanced Order Flow, Option Flow, Futures & Liquidity Specialist).
+أنت كبير محللي تدفق الأوامر والسيولة المؤسسية للذهب (XAU/USD Advanced Order Flow, Option Flow, Futures, TPO Market Profile & Liquidity Specialist).
 قم بتحليل بيانات السوق الشاملة بدقة فائقة مدعومة بجميع الأدوات المتطورة:
 1. Footprint Imbalances & CVD Delta (اختلالات تدفق الحجم والدلتا التراكمية).
-2. Option Flow & UOA (عقود الخيارات المؤسسية، صفقات الحيتان، ونسبة P/C Ratio وجدران الغاما).
-3. Futures & COMEX Basis (فروق أسعار الفوري والآجل، الفائدة المفتوحة OI، ومعدلات التمويل).
-4. Liquidity Zones & BSL/SSL Sweeps (مناطق سيولة القمم والقيعان المستهدفة وصيد الوقف).
-5. DOM Ladder & Macro DXY (عمق السوق وعلاقة الذهب بمؤشر الدولار).
+2. TPO Market Profile & Value Area (بروفايل المزاد TPO، سقف وقاع القيمة VAH / VAL، نقطة التحكم POC، ونطاق التوازن الأولي IB).
+3. Institutional VWAP Bands & Standard Deviation (قنوات الفاب والانحراف المعياري ومستويات التشبع ±1σ و ±2σ).
+4. Trapped Traders & Absorption (كاشف مصائد المشترين والبائعين ونسبة الامتصاص الصامت لصانع السوق).
+5. Option Flow & UOA (عقود الخيارات المؤسسية، صفقات الحيتان، ونسبة P/C Ratio وجدران الغاما).
+6. Futures & COMEX Basis (فروق أسعار الفوري والآجل، الفائدة المفتوحة OI، ومعدلات التمويل).
+7. Liquidity Zones & BSL/SSL Sweeps (مناطق سيولة القمم والقيعان المستهدفة وصيد الوقف).
+8. DOM Ladder & Macro DXY (عمق السوق وعلاقة الذهب بمؤشر الدولار).
 
 ملاحظة حاسمة بخصوص المستويات الذكية (Smart Buy & Smart Sell Levels):
 يجب أن تكون المستويات مرنة تقبل الاتجاهين بحسب سلوك السعر عند المستوى:
@@ -345,8 +367,8 @@ app.post("/api/gemini/analyze-orderflow", async (req, res) => {
   "bias": "Bullish Accumulation" أو "Bearish Distribution" أو "Neutral / Sideways",
   "biasAr": "الاتجاه المتوقع باللغة العربية مع وصف مؤسسي شامل للأدوات المتطورة",
   "confidence": نسبة الثقة كرقم من 0 إلى 100,
-  "summaryAr": "ملخص تحليلي احترافي عميق يدمج إشارات أوبشن فلو، الفيوتشر، والفوت برنت",
-  "institutionalActivityAr": "وصف دقيق لما يفعله صناع السوق والحيتان عبر صفقات الكول/بوت وعقود الآجلة",
+  "summaryAr": "ملخص تحليلي احترافي عميق يدمج إشارات بروفايل TPO، منطقة القيمة VAH/VAL، انحراف الفاب، أوبشن فلو، الفيوتشر، والفوت برنت",
+  "institutionalActivityAr": "وصف دقيق لما يفعله صناع السوق والحيتان عبر صفقات الكول/بوت والفيوتشر وامتصاص المزاد ومصائد المتداولين",
   "dxyCorrelationInsightAr": "تحليل تأثير حركة مؤشر الدولار DXY والماكرو على الذهب",
   "keyLevels": {
     "resistance": "مستوى المقاومة / BSL",
