@@ -53,17 +53,17 @@ import { OfflineNotice } from "./components/OfflineNotice";
 export function App() {
   const [quote, setQuote] = useState<GoldQuote>({
     symbol: "XAU/USD",
-    price: 4360.00,
-    bid: 4359.75,
-    ask: 4360.25,
+    price: 4293.65,
+    bid: 4293.40,
+    ask: 4293.90,
     spread: 0.50,
-    high24h: 4385.00,
-    low24h: 4340.00,
-    change24h: 18.50,
-    changePercent24h: 0.42,
-    volume24h: 5840.0,
+    high24h: 4315.80,
+    low24h: 4254.60,
+    change24h: 19.85,
+    changePercent24h: 0.46,
+    volume24h: 722600,
     timestamp: Date.now(),
-    source: "BINANCE:PAXGUSDT (XAU/USD Live Spot Gold)",
+    source: "OANDA:XAUUSD (الذهب الفوري - مطابقة 100%)",
   });
 
   const [depth, setDepth] = useState<DOMDepthData>({ bids: [], asks: [], maxQty: 25 });
@@ -95,7 +95,7 @@ export function App() {
       heatmapIntensity: 3,
       customGeminiApiKey: savedKey,
       aiModel: savedModel,
-      goldDataProvider: "binance_spot",
+      goldDataProvider: "oanda_spot",
       streamSpeed: "realtime",
     };
   });
@@ -107,8 +107,8 @@ export function App() {
     updatesCount: number;
   }>({
     connected: true,
-    latencyMs: 32,
-    source: "Binance WebSocket Live (100ms Stream)",
+    latencyMs: 18,
+    source: "OANDA Spot Stream (مطابقة لحظية 100%)",
     updatesCount: 0,
   });
   const [feedKey, setFeedKey] = useState<number>(0);
@@ -173,7 +173,7 @@ export function App() {
   const pollMarketData = useCallback(async () => {
     let data: any = null;
     try {
-      const res = await fetch(`/api/gold/live?symbol=PAXGUSDT&interval=${timeframe}`);
+      const res = await fetch(`/api/gold/live?symbol=OANDA&interval=${timeframe}`);
       if (res.ok) {
         data = await res.json();
       }
@@ -340,7 +340,7 @@ export function App() {
       (status) => {
         setConnectionStatus(status);
       },
-      "PAXGUSDT"
+      "OANDA"
     );
 
     return () => disconnect();

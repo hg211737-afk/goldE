@@ -14,15 +14,15 @@ declare global {
 
 const SYMBOL_OPTIONS = [
   {
-    id: "BINANCE:PAXGUSDT",
-    label: "بينانس الرسمي (PAXG/USDT)",
-    desc: "مطابقة 100% مع دفتر الأوامر والفوت برنت",
+    id: "OANDA:XAUUSD",
+    label: "أواندا الفوري (OANDA:XAUUSD)",
+    desc: "شارت الفوركس الفوري الرسمي XAU/USD مطابق 100% مع أواندا",
     recommended: true,
   },
   {
-    id: "OANDA:XAUUSD",
-    label: "أواندا الفوري (OANDA Spot)",
-    desc: "شارت الفوركس الفوري XAU/USD",
+    id: "BINANCE:PAXGUSDT",
+    label: "بينانس الرسمي (PAXG/USDT)",
+    desc: "توكن الذهب على بينانس",
     recommended: false,
   },
   {
@@ -41,7 +41,7 @@ const SYMBOL_OPTIONS = [
 
 export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ timeframe }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [activeSymbol, setActiveSymbol] = useState("BINANCE:PAXGUSDT");
+  const [activeSymbol, setActiveSymbol] = useState("OANDA:XAUUSD");
 
   const getInterval = (tf: Timeframe): string => {
     switch (tf) {
@@ -109,8 +109,9 @@ export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ timeframe 
             {currentOpt.id}
           </span>
           {currentOpt.recommended && (
-            <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">
-              تطابق 100% مع بينانس
+            <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+              <Check className="w-3 h-3" />
+              مطابقة 100% مع أواندا (OANDA)
             </span>
           )}
         </div>

@@ -287,7 +287,7 @@ export interface AppSettings {
   heatmapIntensity: number;
   customGeminiApiKey?: string;
   aiModel?: string;
-  goldDataProvider?: "binance_spot" | "binance_futures" | "tradingview";
+  goldDataProvider?: "oanda_spot" | "binance_spot" | "binance_futures" | "tradingview";
   streamSpeed?: "realtime" | "fast" | "normal";
 }
 

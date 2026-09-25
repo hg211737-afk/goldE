@@ -371,10 +371,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="space-y-2">
                   {[
                     {
+                      id: "oanda_spot",
+                      name: "أواندا الفوري الرسمي (OANDA Spot XAU/USD)",
+                      badge: "مطابقة 100% مع أواندا (الافتراضي المعتمد)",
+                      desc: "مطابقة تامة وشاملة مع أسعار وسيط OANDA العالمي على تريدنج فيو وميتاتريدر بالملي والسنت مع معايرة دفتر الأوامر والشموع.",
+                    },
+                    {
                       id: "binance_spot",
                       name: "Binance Gold Spot (PAXG/USDT)",
-                      badge: "بث WebSocket لحظي 100ms (الأسرع)",
-                      desc: "مطابق لعقود أونصة الذهب الفيزيائي الفوري 1:1 XAU/USD مع عمق صفقات حي وتدفق فوري تكة بتكة.",
+                      badge: "بث WebSocket لحظي 100ms",
+                      desc: "عقود أونصة الذهب الفيزيائي الفوري 1:1 XAU/USD مع عمق صفقات حي وتدفق فوري تكة بتكة.",
                     },
                     {
                       id: "binance_futures",
@@ -389,7 +395,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       desc: "الربط التفاعلي مع ويدجت TradingView المباشر لأسعار الذهب الفورية العالمية.",
                     },
                   ].map((prov) => {
-                    const isSelected = (settings.goldDataProvider || "binance_spot") === prov.id;
+                    const isSelected = (settings.goldDataProvider || "oanda_spot") === prov.id;
                     return (
                       <button
                         key={prov.id}
