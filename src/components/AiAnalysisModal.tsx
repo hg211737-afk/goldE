@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import {
   Award,
   BarChart2,
+  Compass,
   Cpu,
   Crosshair,
   Flame,
@@ -19,6 +20,7 @@ import {
   CheckCircle2,
   XCircle,
   BrainCircuit,
+  Sparkles,
 } from "lucide-react";
 import { AiAnalysisResult, MacroCorrelationReport } from "../types";
 import { DualSmartLevelsWidget } from "./DualSmartLevelsWidget";
@@ -28,6 +30,7 @@ import { recordTradeOutcome, getLearningStats } from "../services/goldService";
 import { generateTpoMarketProfile } from "../services/marketProfileService";
 import { SniperRecommendationCard } from "./SniperRecommendationCard";
 import { generateSniperPrecisionSetup } from "../services/sniperPrecisionService";
+import { generateMovementPrediction } from "../services/reversalPredictorService";
 
 interface AiAnalysisModalProps {
   isOpen: boolean;
@@ -54,11 +57,20 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   activeModel = "Gemini 3.6 Flash",
   hasCustomKey = false,
 }) => {
-  const [modalTab, setModalTab] = useState<"overview" | "sniper" | "tpo_profile" | "dual_levels" | "correlation">("overview");
+  const [modalTab, setModalTab] = useState<"overview" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation">("overview");
   const [feedbackGiven, setFeedbackGiven] = useState<string | null>(null);
   const learningStats = analysis?.learningStats || getLearningStats();
   const tpoReport = useMemo(() => generateTpoMarketProfile(currentPrice), [currentPrice]);
   const activeMacro = macroReport || getMacroCorrelationData(currentPrice);
+
+  const movementPrediction = useMemo(() => {
+    if (analysis?.prediction) return analysis.prediction;
+    return generateMovementPrediction({
+      currentPrice,
+      tpoReport,
+      macroReport: activeMacro,
+    });
+  }, [analysis, currentPrice, tpoReport, activeMacro]);
 
   const sniperSetup = useMemo(() => {
     if (analysis?.sniperSetup) return analysis.sniperSetup;
@@ -175,6 +187,21 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
           </button>
 
           <button
+            onClick={() => setModalTab("predictor")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              modalTab === "predictor"
+                ? "bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 font-black shadow-xs"
+                : "text-amber-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span>مسار الذهب والارتداد (Predictor)</span>
+            <span className="text-[10px] bg-amber-400/25 text-amber-200 px-1.5 py-0.2 rounded font-mono font-bold">
+              تنبؤ
+            </span>
+          </button>
+
+          <button
             onClick={() => setModalTab("sniper")}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
               modalTab === "sniper"
@@ -254,6 +281,181 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                 <p className="text-xs text-slate-400 mt-1 max-w-sm">
                   يقوم الذكاء الاصطناعي برصد اختلالات الدلتا ومستويات الـ BSL/SSL وحساب سيناريوهات الاختراق والارتداد
                 </p>
+              </div>
+            </div>
+          ) : modalTab === "predictor" ? (
+            <div className="space-y-4">
+              {/* Movement Summary Banner */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 border border-amber-500/30 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    <Compass className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                      التنبؤ بحركة الذهب القادمة ومناطق الارتداد المؤسسي
+                      <span className="text-[10px] bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full font-mono">
+                        {movementPrediction.directionConfidence}% ثقة
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      {movementPrediction.primaryDirectionAr} • المدى المتوقع: {movementPrediction.expectedMovePips} نقطة (${movementPrediction.expectedMoveDollars})
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right font-['JetBrains_Mono']">
+                  <span className="text-[10px] text-slate-400 block font-['Cairo']">السعر اللحظي:</span>
+                  <span className="text-sm font-black text-amber-400">
+                    ${currentPrice.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Answers Grid: Where it will go & Where it will reverse */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* 1. أين سيذهب الذهب القادم؟ */}
+                <div className="p-4 rounded-xl bg-[#0b0f19] border border-slate-800 space-y-2.5">
+                  <div className="flex items-center gap-2 text-amber-400 font-bold text-xs pb-2 border-b border-slate-800">
+                    <Target className="w-4 h-4" />
+                    <span>١. أين سيذهب الذهب القادم؟ (Target Magnets)</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="p-2.5 bg-slate-900/80 rounded-lg border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">
+                          {movementPrediction.targetMagnets.primaryTarget.labelAr}
+                        </span>
+                        <span className="text-xs font-bold text-white">
+                          {movementPrediction.targetMagnets.primaryTarget.reasonAr}
+                        </span>
+                      </div>
+                      <span className="text-sm font-black text-amber-400 font-['JetBrains_Mono']">
+                        ${movementPrediction.targetMagnets.primaryTarget.price.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 bg-slate-900/80 rounded-lg border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">
+                          {movementPrediction.targetMagnets.secondaryTarget.labelAr}
+                        </span>
+                        <span className="text-xs font-bold text-white">
+                          {movementPrediction.targetMagnets.secondaryTarget.reasonAr}
+                        </span>
+                      </div>
+                      <span className="text-sm font-black text-emerald-400 font-['JetBrains_Mono']">
+                        ${movementPrediction.targetMagnets.secondaryTarget.price.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 bg-slate-900/80 rounded-lg border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">
+                          {movementPrediction.targetMagnets.extremeExtension.labelAr}
+                        </span>
+                        <span className="text-xs font-bold text-white">
+                          {movementPrediction.targetMagnets.extremeExtension.reasonAr}
+                        </span>
+                      </div>
+                      <span className="text-sm font-black text-teal-300 font-['JetBrains_Mono']">
+                        ${movementPrediction.targetMagnets.extremeExtension.price.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. من أين سيرتد الذهب؟ */}
+                <div className="p-4 rounded-xl bg-[#0b0f19] border border-amber-500/20 space-y-2.5">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs pb-2 border-b border-slate-800">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span>٢. من أين سيرتد الذهب؟ (Reversal Pivots)</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="p-2.5 bg-emerald-950/20 rounded-lg border border-emerald-500/30 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-emerald-300 block font-bold">
+                          ارتداد صعودي (Bullish Bounce Spring)
+                        </span>
+                        <span className="text-xs text-slate-300">
+                          الجيب الذهبي 0.618 وكتلة الطلب (احتمالية {movementPrediction.reversalPivots.bullishBounce.probabilityPercent}%)
+                        </span>
+                      </div>
+                      <div className="text-left font-['JetBrains_Mono']">
+                        <span className="text-xs font-black text-emerald-400">
+                          ${movementPrediction.reversalPivots.bullishBounce.priceRange.min} - ${movementPrediction.reversalPivots.bullishBounce.priceRange.max}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block font-['Cairo']">
+                          رد الفعل: +${movementPrediction.reversalPivots.bullishBounce.expectedReactionDollars}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 bg-rose-950/20 rounded-lg border border-rose-500/30 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-rose-300 block font-bold">
+                          ارتداد بيعي (Bearish Supply Rejection)
+                        </span>
+                        <span className="text-xs text-slate-300">
+                          سحب سيولة القمم BSL وجدار العرض (احتمالية {movementPrediction.reversalPivots.bearishRejection.probabilityPercent}%)
+                        </span>
+                      </div>
+                      <div className="text-left font-['JetBrains_Mono']">
+                        <span className="text-xs font-black text-rose-400">
+                          ${movementPrediction.reversalPivots.bearishRejection.priceRange.min} - ${movementPrediction.reversalPivots.bearishRejection.priceRange.max}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block font-['Cairo']">
+                          رد الفعل: -${movementPrediction.reversalPivots.bearishRejection.expectedReactionDollars}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trajectory Steps Milestones */}
+              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2.5">
+                <span className="text-xs font-bold text-white block">
+                  خريطة المسار المستقبلي المتوقع خطوة بخطوة:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                  {movementPrediction.trajectorySteps.map((step) => (
+                    <div
+                      key={step.stepNumber}
+                      className="p-2.5 bg-slate-950/70 border border-slate-800 rounded-lg flex flex-col justify-between"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[9px] text-amber-400 font-bold">
+                          #{step.stepNumber}
+                        </span>
+                        <span className="text-[9px] text-slate-500 font-mono">
+                          {step.timeframeEstAr}
+                        </span>
+                      </div>
+                      <span className="text-xs font-bold text-white truncate">
+                        {step.titleAr}
+                      </span>
+                      <span className="text-xs font-black text-amber-300 font-mono mt-1">
+                        {step.priceLabel}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Fibonacci Golden Pocket Snapshot */}
+              <div className="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-slate-300">
+                    الجيب الذهبي لفيبوناتشي: <strong className="text-amber-400 font-mono">${movementPrediction.fibLevels.fib0618} - ${movementPrediction.fibLevels.fib0650}</strong>
+                  </span>
+                </div>
+                <span className="text-slate-400 text-[11px]">
+                  التوجيه الأمثل: <strong className="text-emerald-400">{movementPrediction.bestActionAr}</strong>
+                </span>
               </div>
             </div>
           ) : modalTab === "sniper" ? (

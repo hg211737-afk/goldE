@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import {
   Award,
   CheckCircle2,
+  Compass,
   Copy,
   Crosshair,
   Flame,
@@ -27,6 +28,7 @@ import {
 } from "../types";
 import { generateSniperPrecisionSetup } from "../services/sniperPrecisionService";
 import { SniperRecommendationCard } from "./SniperRecommendationCard";
+import { generateMovementPrediction } from "../services/reversalPredictorService";
 
 interface SniperSignalsViewProps {
   currentPrice: number;
@@ -73,6 +75,16 @@ export const SniperSignalsView: React.FC<SniperSignalsViewProps> = ({
       aiBias: primarySetup.direction === "BUY" ? "SELL" : "BUY",
     });
   }, [currentPrice, bars, tpoReport, liquidityZones, macroReport, primarySetup.direction]);
+
+  const movementPrediction = useMemo(() => {
+    return generateMovementPrediction({
+      currentPrice,
+      bars,
+      liquidityZones,
+      tpoReport,
+      macroReport,
+    });
+  }, [currentPrice, bars, liquidityZones, tpoReport, macroReport]);
 
   return (
     <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4 max-w-7xl mx-auto w-full font-['Cairo'] text-slate-100">
@@ -182,6 +194,19 @@ export const SniperSignalsView: React.FC<SniperSignalsViewProps> = ({
           </span>
           <span className="text-[9px] text-slate-400 block mt-0.5">تأمين تلقائي عند TP1</span>
         </div>
+      </div>
+
+      {/* Movement Prediction & Reversal Anchor Banner */}
+      <div className="p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 border border-amber-500/30 flex items-center justify-between flex-wrap gap-2 text-xs">
+        <div className="flex items-center gap-2">
+          <Compass className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+          <span className="text-slate-200">
+            <strong>تنبؤ مسار الذهب:</strong> يتجه نحو <strong className="text-amber-400 font-mono">${movementPrediction.targetMagnets.primaryTarget.price.toFixed(2)}</strong> مع توقع ارتداد مؤسسي محتوم عند <strong className="text-emerald-400 font-mono">${movementPrediction.reversalPivots.bullishBounce.price.toFixed(2)}</strong> (الجيب الذهبي 0.618).
+          </span>
+        </div>
+        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md font-mono font-bold">
+          احتمالية الارتداد: {movementPrediction.reversalPivots.bullishBounce.probabilityPercent}%
+        </span>
       </div>
 
       {/* Primary Sniper Recommendation Card */}

@@ -42,6 +42,7 @@ import { OptionFlowView } from "./components/OptionFlowView";
 import { FuturesAnalysisView } from "./components/FuturesAnalysisView";
 import { MarketProfileView } from "./components/MarketProfileView";
 import { SniperSignalsView } from "./components/SniperSignalsView";
+import { ReversalPredictorView } from "./components/ReversalPredictorView";
 import { LiquidityZonesList } from "./components/LiquidityZonesList";
 import { DomLadder } from "./components/DomLadder";
 import { TimeAndSales } from "./components/TimeAndSales";
@@ -452,6 +453,16 @@ export function App() {
               liquidityZones={liquidityZones}
               onRefresh={handleTriggerAiAnalysis}
               isAiLoading={isAiLoading}
+            />
+          )}
+          {viewMode === "predictor" && (
+            <ReversalPredictorView
+              currentPrice={quote.price}
+              bars={footprintBars}
+              liquidityZones={liquidityZones}
+              timeframe={timeframe}
+              customApiKey={settings.customGeminiApiKey}
+              preferredModel={settings.aiModel}
             />
           )}
           {viewMode === "tradingview" && <TradingViewWidget timeframe={timeframe} />}

@@ -3,6 +3,7 @@ import {
   Activity,
   BarChart2,
   ChartLine,
+  Compass,
   Cpu,
   Crosshair,
   Flame,
@@ -237,6 +238,21 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* View Mode Buttons */}
           <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 flex-wrap">
+            <button
+              onClick={() => onViewModeChange("predictor")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "predictor"
+                  ? "bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
+                  : "text-amber-400 hover:text-amber-300 hover:bg-slate-800/60"
+              }`}
+              title="أداة التنبؤ بمسار الذهب ومناطق الارتداد المؤسسي (Gold Movement & Reversal Predictor)"
+            >
+              <Compass className="w-3.5 h-3.5 animate-pulse" />
+              <span>مسار وتنبؤ الارتداد</span>
+              <span className="text-[9px] bg-amber-400/30 text-amber-200 px-1 py-0.2 rounded font-bold">
+                جديد
+              </span>
+            </button>
             <button
               onClick={() => onViewModeChange("signals")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${

@@ -139,7 +139,8 @@ export type ViewMode =
   | "optionflow"
   | "futures"
   | "marketprofile"
-  | "signals";
+  | "signals"
+  | "predictor";
 
 export interface TpoLevelData {
   price: number;
@@ -442,5 +443,80 @@ export interface AiAnalysisResult {
     adaptiveAdjustmentAr: string;
   };
   marketProfile?: TpoMarketProfileReport;
+  prediction?: GoldMovementPrediction;
+}
+
+export interface ReversalPivotZone {
+  id: string;
+  type: "bullish_bounce" | "bearish_rejection";
+  nameAr: string;
+  price: number;
+  priceRange: { min: number; max: number };
+  distancePips: number;
+  probabilityPercent: number; // e.g. 88%
+  strength: "ultra_high" | "high" | "moderate";
+  expectedReactionDollars: number; // e.g. +$18.50
+  confluenceReasonsAr: string[];
+  technicalRationaleAr: string;
+  invalidationPrice: number;
+  targetPrice: number;
+  riskReward: string;
+}
+
+export interface TrajectoryStep {
+  stepNumber: number;
+  titleAr: string;
+  actionAr: string;
+  price: number;
+  priceLabel: string;
+  timeframeEstAr: string;
+  descriptionAr: string;
+  type: "current" | "approach" | "reversal_bounce" | "expansion_tp1" | "final_tp2";
+}
+
+export interface GoldMovementPrediction {
+  timestamp: number;
+  currentPrice: number;
+  primaryDirection: "BULLISH_EXPANSION" | "BEARISH_BREAKDOWN" | "RANGE_REVERSAL_BOUNCE";
+  primaryDirectionAr: string;
+  directionConfidence: number; // 0 - 100%
+  expectedMovePips: number;
+  expectedMoveDollars: number;
+  timeframeHorizonAr: string;
+
+  // Answers: أين سيذهب الذهب؟
+  targetMagnets: {
+    primaryTarget: { price: number; distancePips: number; labelAr: string; reasonAr: string };
+    secondaryTarget: { price: number; distancePips: number; labelAr: string; reasonAr: string };
+    extremeExtension: { price: number; distancePips: number; labelAr: string; reasonAr: string };
+  };
+
+  // Answers: من أين سيرتد الذهب؟
+  reversalPivots: {
+    bullishBounce: ReversalPivotZone;
+    bearishRejection: ReversalPivotZone;
+    deepLiquiditySpring?: ReversalPivotZone;
+  };
+
+  // Projected Step-by-Step Path
+  trajectorySteps: TrajectoryStep[];
+
+  // Fibonacci Confluence Engine
+  fibLevels: {
+    swingHigh: number;
+    swingLow: number;
+    fib0382: number;
+    fib0500: number;
+    fib0618: number; // Golden Pocket
+    fib0650: number; // Golden Pocket upper
+    fib0786: number;
+    ext1272: number;
+    ext1618: number;
+  };
+
+  marketCycleStatusAr: string;
+  catalystInsightAr: string;
+  bestActionAr: string;
+  aiDeepForecast?: string;
 }
 
