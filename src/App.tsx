@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Activity,
+  Clock,
   Flame,
   Globe2,
   Layers,
@@ -50,6 +51,8 @@ import { CorrelationWidget } from "./components/CorrelationWidget";
 import { AiAnalysisModal } from "./components/AiAnalysisModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { OfflineNotice } from "./components/OfflineNotice";
+import { PendingLimitOrdersSection } from "./components/PendingLimitOrdersSection";
+import { generateInstitutionalPendingLimits } from "./services/pendingLimitService";
 
 export function App() {
   const [quote, setQuote] = useState<GoldQuote>({
@@ -77,10 +80,14 @@ export function App() {
   const [settings, setSettings] = useState<AppSettings>(() => {
     let savedKey = "";
     let savedModel = "gemini-2.5-flash";
+    let savedClaudeKey = "";
+    let savedClaudeModel = "Claude 3.7 Sonnet";
     try {
       if (typeof window !== "undefined") {
         savedKey = localStorage.getItem("gold_orderflow_gemini_key") || "";
         savedModel = localStorage.getItem("gold_orderflow_ai_model") || "gemini-2.5-flash";
+        savedClaudeKey = localStorage.getItem("gold_orderflow_claude_key") || "";
+        savedClaudeModel = localStorage.getItem("gold_orderflow_claude_model") || "Claude 3.7 Sonnet";
       }
     } catch {
       // ignore
@@ -96,6 +103,8 @@ export function App() {
       heatmapIntensity: 3,
       customGeminiApiKey: savedKey,
       aiModel: savedModel,
+      customClaudeApiKey: savedClaudeKey,
+      claudeModel: savedClaudeModel,
       goldDataProvider: "oanda_spot",
       streamSpeed: "realtime",
     };
@@ -117,6 +126,7 @@ export function App() {
   const [aiAnalysis, setAiAnalysis] = useState<AiAnalysisResult | null>(null);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
+  const [aiModalInitialTab, setAiModalInitialTab] = useState<any>("overview");
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>("chart");
   const [alertBanner, setAlertBanner] = useState<string | null>(null);
@@ -391,7 +401,14 @@ export function App() {
         onTimeframeChange={setTimeframe}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        onOpenAiModal={handleTriggerAiAnalysis}
+        onOpenAiModal={() => {
+          setAiModalInitialTab("overview");
+          handleTriggerAiAnalysis();
+        }}
+        onOpenClaudeModal={() => {
+          setAiModalInitialTab("claude");
+          setIsAiModalOpen(true);
+        }}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         isAiLoading={isAiLoading}
         activeLiquidityCount={liquidityZones.filter((z) => z.status === "untested").length}
@@ -655,6 +672,7 @@ export function App() {
         isOpen={isAiModalOpen}
         onClose={() => setIsAiModalOpen(false)}
         analysis={aiAnalysis}
+        initialTab={aiModalInitialTab}
         isLoading={isAiLoading}
         onRefresh={handleTriggerAiAnalysis}
         currentPrice={quote.price}
@@ -665,6 +683,8 @@ export function App() {
         }}
         activeModel={settings.aiModel || "gemini-2.5-flash"}
         hasCustomKey={Boolean(settings.customGeminiApiKey && settings.customGeminiApiKey.trim())}
+        customClaudeApiKey={settings.customClaudeApiKey}
+        claudeModel={settings.claudeModel || "Claude 3.7 Sonnet"}
       />
 
       <SettingsModal

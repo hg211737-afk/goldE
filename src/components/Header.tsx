@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import {
   Activity,
   BarChart2,
+  Bot,
   ChartLine,
+  Clock,
   Compass,
   Cpu,
   Crosshair,
@@ -25,6 +27,8 @@ interface HeaderProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onOpenAiModal: () => void;
+  onOpenClaudeModal?: () => void;
+  onOpenPendingLimitsModal?: () => void;
   onOpenSettingsModal: () => void;
   onRefresh?: () => void;
   isAiLoading: boolean;
@@ -45,6 +49,8 @@ export const Header: React.FC<HeaderProps> = ({
   viewMode,
   onViewModeChange,
   onOpenAiModal,
+  onOpenClaudeModal,
+  onOpenPendingLimitsModal,
   onOpenSettingsModal,
   onRefresh,
   isAiLoading,
@@ -130,14 +136,45 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Quick Right-Side Actions */}
           <div className="flex items-center gap-2">
+            {/* First AI: Gemini */}
             <button
               onClick={onOpenAiModal}
               disabled={isAiLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              title="الذكاء الأول: تحليل Gemini لتدفق الأوامر والسيولة"
             >
               <Cpu className={`w-3.5 h-3.5 ${isAiLoading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">تحليل الذكاء</span>
-              <span className="sm:hidden">ذكاء AI</span>
+              <span className="hidden sm:inline">تحليل Gemini</span>
+              <span className="sm:hidden">Gemini</span>
+            </button>
+
+            {/* Second AI: Claude */}
+            <button
+              onClick={onOpenClaudeModal || onOpenAiModal}
+              disabled={isAiLoading}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-gradient-to-r from-orange-500 via-amber-600 to-rose-600 hover:from-orange-400 hover:to-amber-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all cursor-pointer active:scale-95 disabled:opacity-50 border border-orange-400/40"
+              title="الذكاء الثاني: تحليل كلاود (Claude 3.7 Sonnet) للهيكل السعري ومصائد السيولة"
+            >
+              <Bot className={`w-3.5 h-3.5 text-orange-200 ${isAiLoading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">تحليل كلاود (Claude)</span>
+              <span className="sm:hidden">كلاود</span>
+              <span className="text-[9px] bg-white/20 text-white px-1 py-0.2 rounded font-mono font-bold hidden md:inline">
+                3.7
+              </span>
+            </button>
+
+            {/* Third Action: Pending Limit Orders */}
+            <button
+              onClick={onOpenPendingLimitsModal}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all cursor-pointer active:scale-95 border border-emerald-400/40"
+              title="صفقات Limit المعلقة فائقة الضمان (السعر لم يصل إليها بعد)"
+            >
+              <Clock className="w-3.5 h-3.5 text-emerald-200 animate-pulse" />
+              <span className="hidden sm:inline">صفقات Limit المعلقة</span>
+              <span className="sm:hidden">Limit</span>
+              <span className="text-[9px] bg-emerald-400 text-slate-950 px-1 py-0.2 rounded font-mono font-black hidden md:inline">
+                A++
+              </span>
             </button>
 
             <PWAInstallButton />

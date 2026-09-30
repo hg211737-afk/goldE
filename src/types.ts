@@ -197,9 +197,9 @@ export interface TpoMarketProfileReport {
   levels: TpoLevelData[];
 }
 
-export type SidebarTab = "liquidity" | "correlation" | "dom" | "tape";
+export type SidebarTab = "pending_limits" | "liquidity" | "correlation" | "dom" | "tape";
 
-export type MobileTab = "chart" | "liquidity" | "correlation" | "dom" | "tape";
+export type MobileTab = "chart" | "pending_limits" | "liquidity" | "correlation" | "dom" | "tape";
 
 export interface GoldQuote {
   symbol: string;
@@ -288,6 +288,8 @@ export interface AppSettings {
   heatmapIntensity: number;
   customGeminiApiKey?: string;
   aiModel?: string;
+  customClaudeApiKey?: string;
+  claudeModel?: string;
   goldDataProvider?: "oanda_spot" | "binance_spot" | "binance_futures" | "tradingview";
   streamSpeed?: "realtime" | "fast" | "normal";
 }
@@ -444,6 +446,76 @@ export interface AiAnalysisResult {
   };
   marketProfile?: TpoMarketProfileReport;
   prediction?: GoldMovementPrediction;
+  claudeAnalysis?: ClaudeAnalysisResult;
+  confluenceMatrix?: ConfluenceMatrix;
+  pendingLimitSetups?: InstitutionalPendingLimitSetup[];
+}
+
+export interface ConfluenceFactor {
+  id: string;
+  nameAr: string;
+  category: "macro" | "tpo_auction" | "orderflow" | "smc_liquidity" | "fibonacci";
+  signal: "bullish" | "bearish" | "neutral";
+  signalAr: string;
+  weight: number; // e.g. 20
+  score: number; // e.g. 18.5
+  detailAr: string;
+  levelValue?: string;
+  confirmed: boolean;
+}
+
+export interface ConfluenceMatrix {
+  overallScore: number; // 0 - 100%
+  grade: "S_TIER_CONFLUENCE" | "A_TIER_HIGH" | "B_TIER_MODERATE" | "LOW_CONFLUENCE";
+  gradeAr: string;
+  unifyingThesisAr: string;
+  causalChainSteps: {
+    stepNumber: number;
+    titleAr: string;
+    factorName: string;
+    explanationAr: string;
+    impactAr: string;
+    status: "aligned" | "warning" | "divergent";
+  }[];
+  factors: ConfluenceFactor[];
+  goldenConfluenceZone: {
+    priceRange: string;
+    centerPrice: number;
+    confluentElements: string[];
+    actionRecommendationAr: string;
+    riskRewardRatio: string;
+  };
+}
+
+export interface ClaudeAnalysisResult {
+  engine: "claude";
+  model: string;
+  bias: string;
+  biasAr: string;
+  confidenceScore: number;
+  summaryAr: string;
+  marketStructureAr: string;
+  liquidityInducementAr: string;
+  reversalPointAr: string;
+  targetDestinationAr: string;
+  keyLevels: {
+    bounceLevel: string;
+    rejectionLevel: string;
+    target1: string;
+    target2: string;
+    invalidation: string;
+  };
+  tradeSetup: {
+    action: "BUY" | "SELL" | "WAIT";
+    entryZone: string;
+    stopLoss: string;
+    takeProfit1: string;
+    takeProfit2: string;
+    riskReward: string;
+    rationaleAr: string;
+  };
+  keyAdvice: string;
+  timestamp: number;
 }
 
 export interface ReversalPivotZone {
@@ -518,5 +590,62 @@ export interface GoldMovementPrediction {
   catalystInsightAr: string;
   bestActionAr: string;
   aiDeepForecast?: string;
+}
+
+export interface InstitutionalPendingLimitSetup {
+  id: string;
+  orderType: "BUY LIMIT" | "SELL LIMIT";
+  titleAr: string;
+  badgeAr: string; // e.g. "صفقة معلقة مضمونة A++"
+  probabilityScore: number; // e.g. 98.8%
+  
+  // Pending Limit Details
+  limitPrice: number;
+  currentPrice: number;
+  distanceDollars: number; // e.g. $7.25
+  distancePips: number; // e.g. 72.5
+  approachStatus: "waiting" | "approaching" | "near_entry";
+  approachProgressPercent: number; // 0 - 100%
+  
+  // Stop Loss & Safety
+  stopLoss: number;
+  slDistanceDollars: number;
+  slDistancePips: number;
+  slRationaleAr: string;
+  
+  // Multi-target Take Profits
+  tp1: {
+    price: number;
+    profitPips: number;
+    profitDollars: number;
+    descriptionAr: string;
+  };
+  tp2: {
+    price: number;
+    profitPips: number;
+    profitDollars: number;
+    descriptionAr: string;
+  };
+  tp3: {
+    price: number;
+    profitPips: number;
+    profitDollars: number;
+    descriptionAr: string;
+  };
+  
+  riskRewardRatio: string; // e.g. "1 : 4.5"
+  
+  // Why this limit setup is guaranteed / ultra high probability (أسباب الضمان المؤسسي)
+  guaranteeReasonSummaryAr: string;
+  confluencePillars: {
+    pillar: string;
+    descriptionAr: string;
+  }[];
+  institutionalOrderBlockZone: string;
+  
+  // MT4 / MT5 copyable order string
+  mtCommand: string;
+  validitySessionAr: string;
+  timestamp: number;
 }
 

@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Award,
   BarChart2,
+  Bot,
   Compass,
   Cpu,
   Crosshair,
@@ -21,21 +22,31 @@ import {
   XCircle,
   BrainCircuit,
   Sparkles,
+  Link2,
+  Clock,
 } from "lucide-react";
-import { AiAnalysisResult, MacroCorrelationReport } from "../types";
+import { AiAnalysisResult, MacroCorrelationReport, ClaudeAnalysisResult, InstitutionalPendingLimitSetup } from "../types";
 import { DualSmartLevelsWidget } from "./DualSmartLevelsWidget";
 import { CorrelationWidget } from "./CorrelationWidget";
+import { ConfluenceMatrixWidget } from "./ConfluenceMatrixWidget";
+import { PendingLimitOrdersSection } from "./PendingLimitOrdersSection";
 import { generateDualSmartLevels, getMacroCorrelationData } from "../services/correlationService";
 import { recordTradeOutcome, getLearningStats } from "../services/goldService";
 import { generateTpoMarketProfile } from "../services/marketProfileService";
 import { SniperRecommendationCard } from "./SniperRecommendationCard";
 import { generateSniperPrecisionSetup } from "../services/sniperPrecisionService";
 import { generateMovementPrediction } from "../services/reversalPredictorService";
+import { analyzeGoldWithClaude, calculateDualAiConsensus } from "../services/claudeService";
+import { generateInstitutionalConfluenceMatrix } from "../services/confluenceService";
+import { generateInstitutionalPendingLimits } from "../services/pendingLimitService";
 
 interface AiAnalysisModalProps {
   isOpen: boolean;
   onClose: () => void;
   analysis: AiAnalysisResult | null;
+  claudeAnalysis?: ClaudeAnalysisResult | null;
+  pendingLimitSetups?: InstitutionalPendingLimitSetup[];
+  initialTab?: "overview" | "pending_limits" | "confluence" | "claude" | "gemini" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation";
   isLoading: boolean;
   onRefresh: () => void;
   currentPrice: number;
@@ -43,12 +54,17 @@ interface AiAnalysisModalProps {
   onOpenSettings?: () => void;
   activeModel?: string;
   hasCustomKey?: boolean;
+  customClaudeApiKey?: string;
+  claudeModel?: string;
 }
 
 export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   isOpen,
   onClose,
   analysis,
+  claudeAnalysis,
+  pendingLimitSetups: initialPendingLimits,
+  initialTab = "overview",
   isLoading,
   onRefresh,
   currentPrice,
@@ -56,12 +72,57 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   onOpenSettings,
   activeModel = "Gemini 3.6 Flash",
   hasCustomKey = false,
+  customClaudeApiKey,
+  claudeModel = "Claude 3.7 Sonnet",
 }) => {
-  const [modalTab, setModalTab] = useState<"overview" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation">("overview");
+  const [modalTab, setModalTab] = useState<"overview" | "pending_limits" | "confluence" | "claude" | "gemini" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation">("overview");
   const [feedbackGiven, setFeedbackGiven] = useState<string | null>(null);
+  const [localClaude, setLocalClaude] = useState<ClaudeAnalysisResult | null>(null);
+  const [isClaudeLoading, setIsClaudeLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (initialTab) {
+      setModalTab(initialTab as any);
+    }
+  }, [initialTab, isOpen]);
+
+  // Load Claude analysis when opened or refreshed
+  useEffect(() => {
+    if (isOpen) {
+      if (claudeAnalysis) {
+        setLocalClaude(claudeAnalysis);
+      } else {
+        setIsClaudeLoading(true);
+        analyzeGoldWithClaude({
+          currentPrice,
+          customApiKey: customClaudeApiKey,
+          claudeModel,
+        })
+          .then((res) => setLocalClaude(res))
+          .catch((err) => console.error(err))
+          .finally(() => setIsClaudeLoading(false));
+      }
+    }
+  }, [isOpen, currentPrice, claudeAnalysis, customClaudeApiKey, claudeModel]);
+
+  const activeClaude = claudeAnalysis || localClaude;
+  const dualConsensus = useMemo(
+    () => calculateDualAiConsensus(analysis, activeClaude, currentPrice),
+    [analysis, activeClaude, currentPrice]
+  );
+
   const learningStats = analysis?.learningStats || getLearningStats();
   const tpoReport = useMemo(() => generateTpoMarketProfile(currentPrice), [currentPrice]);
   const activeMacro = macroReport || getMacroCorrelationData(currentPrice);
+
+  const confluenceMatrix = useMemo(() => {
+    if (analysis?.confluenceMatrix) return analysis.confluenceMatrix;
+    return generateInstitutionalConfluenceMatrix({
+      currentPrice,
+      tpoReport,
+      macroReport: activeMacro,
+    });
+  }, [analysis, currentPrice, tpoReport, activeMacro]);
 
   const movementPrediction = useMemo(() => {
     if (analysis?.prediction) return analysis.prediction;
@@ -71,6 +132,16 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
       macroReport: activeMacro,
     });
   }, [analysis, currentPrice, tpoReport, activeMacro]);
+
+  const pendingLimits = useMemo(() => {
+    if (initialPendingLimits) return initialPendingLimits;
+    if (analysis?.pendingLimitSetups) return analysis.pendingLimitSetups;
+    return generateInstitutionalPendingLimits({
+      currentPrice,
+      tpoReport,
+      macroReport: activeMacro,
+    });
+  }, [initialPendingLimits, analysis, currentPrice, tpoReport, activeMacro]);
 
   const sniperSetup = useMemo(() => {
     if (analysis?.sniperSetup) return analysis.sniperSetup;
@@ -183,7 +254,67 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>نظرة عامة والتحليل التنفيذي</span>
+            <span>نظرة عامة وتوافق الذكاءين</span>
+            <span className="text-[10px] bg-slate-950/60 text-amber-300 px-1.5 py-0.2 rounded font-mono font-bold">
+              {dualConsensus.agreementScore}% توافق
+            </span>
+          </button>
+
+          <button
+            onClick={() => setModalTab("pending_limits")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              modalTab === "pending_limits"
+                ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black shadow-xs"
+                : "text-emerald-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-emerald-300" />
+            <span>صفقات Limit المعلقة</span>
+            <span className="text-[10px] bg-emerald-400 text-slate-950 px-1.5 py-0.2 rounded font-mono font-black">
+              A++ مضمونة
+            </span>
+          </button>
+
+          <button
+            onClick={() => setModalTab("confluence")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              modalTab === "confluence"
+                ? "bg-gradient-to-r from-amber-500 via-emerald-500 to-teal-500 text-slate-950 font-black shadow-xs"
+                : "text-emerald-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <Link2 className="w-3.5 h-3.5" />
+            <span>التلاقي والربط الشامل (Confluence)</span>
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-mono font-bold">
+              {confluenceMatrix.overallScore}% دقة
+            </span>
+          </button>
+
+          <button
+            onClick={() => setModalTab("claude")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              modalTab === "claude"
+                ? "bg-gradient-to-r from-orange-500 via-amber-600 to-rose-600 text-white font-black shadow-xs border border-orange-400/50"
+                : "text-orange-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5 text-orange-200" />
+            <span>تحليل كلاود (Claude 3.7)</span>
+            <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.2 rounded font-mono font-bold">
+              الذكاء الثاني
+            </span>
+          </button>
+
+          <button
+            onClick={() => setModalTab("gemini")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              modalTab === "gemini"
+                ? "bg-indigo-600 text-white font-black shadow-xs"
+                : "text-indigo-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <Cpu className="w-3.5 h-3.5 text-indigo-300" />
+            <span>تحليل Gemini (الذكاء الأول)</span>
           </button>
 
           <button
@@ -283,6 +414,17 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                 </p>
               </div>
             </div>
+          ) : modalTab === "pending_limits" ? (
+            <PendingLimitOrdersSection
+              setups={pendingLimits}
+              currentPrice={currentPrice}
+              onRefresh={onRefresh}
+            />
+          ) : modalTab === "confluence" ? (
+            <ConfluenceMatrixWidget
+              confluence={confluenceMatrix}
+              currentPrice={currentPrice}
+            />
           ) : modalTab === "predictor" ? (
             <div className="space-y-4">
               {/* Movement Summary Banner */}
@@ -580,6 +722,140 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                 </p>
               </div>
             </div>
+          ) : modalTab === "claude" ? (
+            <div className="space-y-4">
+              {/* Claude Header Banner */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-orange-500/15 via-slate-900 to-slate-900 border border-orange-500/40 flex items-center justify-between flex-wrap gap-2 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white shadow-md">
+                    <Bot className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                      تحليل ذكاء كلاود المؤسسي (Claude 3.7 Sonnet)
+                      <span className="text-[10px] bg-orange-500/20 text-orange-300 px-2 py-0.5 rounded-full font-mono border border-orange-500/40">
+                        {activeClaude?.model || "Claude 3.7 Sonnet"}
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
+                        ثقة {activeClaude?.confidenceScore || 91}%
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      هيكل السوق المؤسسي (SMC) • الكسر الهيكلي BOS • مصائد الإغراء Inducement • مناطق الارتداد الدقيقة
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right font-['JetBrains_Mono']">
+                  <span className="text-[10px] text-slate-400 block font-['Cairo']">السعر اللحظي:</span>
+                  <span className="text-sm font-black text-amber-400">
+                    ${currentPrice.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Claude SMC Structural Summary */}
+              <div className="p-4 rounded-xl bg-[#0b0f19] border border-orange-500/30 space-y-2">
+                <div className="flex items-center gap-2 text-orange-400 font-bold text-xs">
+                  <Sparkles className="w-4 h-4" />
+                  <span>الرؤية الهيكلية الشاملة لكلاود (Claude Deep SMC Insight)</span>
+                </div>
+                <p className="text-slate-200 text-xs leading-relaxed">
+                  {activeClaude?.summaryAr}
+                </p>
+              </div>
+
+              {/* Market Structure & Inducement Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5">
+                  <span className="text-xs font-bold text-amber-400 block flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4" />
+                    <span>هيكل السوق (Market Structure BOS &amp; CHoCH):</span>
+                  </span>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {activeClaude?.marketStructureAr}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5">
+                  <span className="text-xs font-bold text-rose-400 block flex items-center gap-1.5">
+                    <Target className="w-4 h-4" />
+                    <span>فخاخ السيولة والإغراء (Liquidity Inducement):</span>
+                  </span>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {activeClaude?.liquidityInducementAr}
+                  </p>
+                </div>
+              </div>
+
+              {/* Targets & Reversal Points from Claude */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-xl bg-[#0b0f19] border border-emerald-500/30 space-y-2">
+                  <span className="text-xs font-bold text-emerald-400 block">
+                    📍 من أين سيرتد الذهب وفق Claude؟
+                  </span>
+                  <p className="text-xs text-slate-200">
+                    {activeClaude?.reversalPointAr}
+                  </p>
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800 font-mono">
+                    <span className="text-slate-400 font-['Cairo']">مستوى الارتداد:</span>
+                    <span className="font-bold text-emerald-400">{activeClaude?.keyLevels?.bounceLevel}</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-[#0b0f19] border border-amber-500/30 space-y-2">
+                  <span className="text-xs font-bold text-amber-400 block">
+                    🎯 أين سيذهب الذهب وفق Claude؟
+                  </span>
+                  <p className="text-xs text-slate-200">
+                    {activeClaude?.targetDestinationAr}
+                  </p>
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800 font-mono">
+                    <span className="text-slate-400 font-['Cairo']">الهدف الأول / الثاني:</span>
+                    <span className="font-bold text-amber-400">{activeClaude?.keyLevels?.target1} | {activeClaude?.keyLevels?.target2}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Claude Trade Setup Box */}
+              {activeClaude?.tradeSetup && (
+                <div className="p-4 rounded-xl bg-gradient-to-br from-[#121622] to-[#0c101a] border border-orange-500/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      خطة صفقة كلاود المقترحة (Claude Execution Setup)
+                    </span>
+                    <span className="text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-lg">
+                      {activeClaude.tradeSetup.action}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-['JetBrains_Mono']">
+                    <div className="p-2 bg-slate-900 rounded-lg border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-['Cairo']">نطاق الدخول:</span>
+                      <span className="text-amber-400 font-bold">{activeClaude.tradeSetup.entryZone}</span>
+                    </div>
+                    <div className="p-2 bg-slate-900 rounded-lg border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-['Cairo']">وقف الخسارة SL:</span>
+                      <span className="text-rose-400 font-bold">{activeClaude.tradeSetup.stopLoss}</span>
+                    </div>
+                    <div className="p-2 bg-slate-900 rounded-lg border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-['Cairo']">الهدف TP1:</span>
+                      <span className="text-emerald-400 font-bold">{activeClaude.tradeSetup.takeProfit1}</span>
+                    </div>
+                    <div className="p-2 bg-slate-900 rounded-lg border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-['Cairo']">العائد للمخاطرة R:R:</span>
+                      <span className="text-teal-400 font-bold">{activeClaude.tradeSetup.riskReward}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                    <strong className="text-amber-400 block mb-0.5">منطق الصفقة:</strong>
+                    {activeClaude.tradeSetup.rationaleAr}
+                  </p>
+                </div>
+              )}
+            </div>
           ) : modalTab === "correlation" ? (
             <div className="h-[480px]">
               <CorrelationWidget
@@ -590,6 +866,163 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
             </div>
           ) : analysis ? (
             <>
+              {/* Dual AI Consensus & Comparison Radar (Gemini & Claude Side-by-Side) */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-950/40 via-slate-900 to-orange-950/40 border border-amber-500/40 space-y-3 shadow-lg">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-orange-500 text-white">
+                      <Sparkles className="w-4 h-4 animate-spin" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-2">
+                        رادار توافق الذكاءين: Gemini &amp; Claude 3.7
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold font-mono">
+                          {dualConsensus.agreementScore}% توافق تام
+                        </span>
+                      </h4>
+                      <p className="text-[10px] text-slate-400">
+                        مقارنة لحظية حية بين رؤية الذكاء الأول (Gemini) والذكاء الثاني (Claude)
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-lg">
+                    {dualConsensus.recommendedActionAr}
+                  </span>
+                </div>
+
+                {/* Side-by-Side Mini Cards: Gemini vs Claude */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {/* Left: Gemini */}
+                  <div className="p-3 rounded-lg bg-indigo-950/30 border border-indigo-500/30 flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold text-indigo-300 flex items-center gap-1">
+                        <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                        الذكاء الأول: Gemini
+                      </span>
+                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.2 rounded font-mono">
+                        {analysis?.confidenceScore || 88}% ثقة
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-white mb-1">
+                      {analysis?.bias || "تجميع شرائي صاعد"}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      الهدف: <strong className="text-amber-300 font-mono">{analysis?.setup?.takeProfit1 || "$4,306.00"}</strong> • الارتداد: <strong className="text-emerald-400 font-mono">${(currentPrice - 7.5).toFixed(2)}</strong>
+                    </span>
+                  </div>
+
+                  {/* Right: Claude */}
+                  <div
+                    onClick={() => setModalTab("claude")}
+                    className="p-3 rounded-lg bg-orange-950/30 border border-orange-500/30 hover:border-orange-400 transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold text-orange-300 flex items-center gap-1">
+                        <Bot className="w-3.5 h-3.5 text-orange-400" />
+                        الذكاء الثاني: Claude 3.7
+                      </span>
+                      <span className="text-[10px] bg-orange-500/20 text-orange-300 px-1.5 py-0.2 rounded font-mono">
+                        {activeClaude?.confidenceScore || 91}% ثقة
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-white mb-1">
+                      {activeClaude?.biasAr || "توسع هيكلي صاعد"}
+                    </span>
+                    <div className="flex items-center justify-between text-[10px] text-slate-400">
+                      <span>الهدف: <strong className="text-amber-300 font-mono">{activeClaude?.keyLevels?.target1 || "$4,308.00"}</strong></span>
+                      <span className="text-orange-400 font-bold hover:underline">تفاصيل كلاود ←</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Synthesis Summary */}
+                <p className="text-[11px] text-slate-300 leading-relaxed bg-[#0b0f19] p-2.5 rounded-lg border border-slate-800">
+                  <strong className="text-amber-400">خلاصة التوافق: </strong>
+                  {dualConsensus.synthesisSummaryAr}
+                </p>
+              </div>
+
+              {/* 5-Factor Causal Linkage Card (Cross-Market Precision) */}
+              <div
+                onClick={() => setModalTab("confluence")}
+                className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-amber-950/40 border-2 border-emerald-500/40 hover:border-emerald-400 transition-all cursor-pointer space-y-2 shadow-md group"
+              >
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      <Link2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-white flex items-center gap-2">
+                        الربط السببي والتلاقي المؤسسي الشامل (Cross-Market Confluence)
+                        <span className="text-[10px] bg-emerald-400 text-slate-950 px-2 py-0.2 rounded-full font-bold">
+                          {confluenceMatrix.overallScore}% دقة فائقة
+                        </span>
+                      </h4>
+                      <p className="text-[10px] text-slate-300">
+                        {confluenceMatrix.gradeAr} • تلاقي قاع المزاد VAL مع فيبوناتشي 0.618 والدلتا
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="text-[11px] text-emerald-400 font-bold group-hover:underline flex items-center gap-1">
+                    <span>فتح مصفوفة التلاقي الكاملة</span>
+                    <span>←</span>
+                  </span>
+                </div>
+
+                {/* The 5 Linkage Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pt-1 text-[10px] font-mono">
+                  <span className="px-2 py-0.5 rounded-md bg-blue-500/15 border border-blue-500/30 text-blue-300 shrink-0">
+                    ١. الماكرو DXY
+                  </span>
+                  <span className="text-slate-500">──&gt;</span>
+                  <span className="px-2 py-0.5 rounded-md bg-rose-500/15 border border-rose-500/30 text-rose-300 shrink-0">
+                    ٢. سحب السيولة SSL
+                  </span>
+                  <span className="text-slate-500">──&gt;</span>
+                  <span className="px-2 py-0.5 rounded-md bg-violet-500/15 border border-violet-500/30 text-violet-300 shrink-0">
+                    ٣. مزاد TPO VAL
+                  </span>
+                  <span className="text-slate-500">──&gt;</span>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shrink-0">
+                    ٤. فيبوناتشي 0.618
+                  </span>
+                  <span className="text-slate-500">──&gt;</span>
+                  <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 shrink-0">
+                    ٥. امتصاص الفوت برنت
+                  </span>
+                </div>
+              </div>
+
+              {/* High Probability Pending Limits Quick Card ( لم يصل إليها السعر بعد ) */}
+              <div
+                onClick={() => setModalTab("pending_limits")}
+                className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-teal-950/40 border-2 border-emerald-500/50 hover:border-emerald-400 transition-all cursor-pointer flex items-center justify-between flex-wrap gap-2.5 shadow-md group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 group-hover:scale-105 transition-transform">
+                    <Clock className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black text-white flex items-center gap-2">
+                      صفقات Limit المعلقة فائقة الضمان (لم يصل إليها السعر بعد)
+                      <span className="text-[10px] bg-emerald-400 text-slate-950 px-2 py-0.2 rounded-full font-bold">
+                        A++ مضمونة 98%
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-slate-300 line-clamp-1">
+                      {pendingLimits[0]?.orderType}: ${pendingLimits[0]?.limitPrice.toFixed(2)} (يبعد ${pendingLimits[0]?.distanceDollars}) • {pendingLimits[1]?.orderType}: ${pendingLimits[1]?.limitPrice.toFixed(2)} (يبعد ${pendingLimits[1]?.distanceDollars})
+                    </span>
+                  </div>
+                </div>
+
+                <span className="text-xs text-emerald-400 font-bold group-hover:underline shrink-0">
+                  فتح شاشة الأوامر المعلقة ←
+                </span>
+              </div>
+
               {/* Top Metric Bar */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div

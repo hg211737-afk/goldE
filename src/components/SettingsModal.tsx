@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   Cpu,
+  Bot,
   RefreshCw,
   Sparkles,
   ExternalLink,
@@ -48,6 +49,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [testMessage, setTestMessage] = useState<string>("");
   const [saveNotice, setSaveNotice] = useState<boolean>(false);
 
+  // Claude Settings State
+  const [claudeKeyInput, setClaudeKeyInput] = useState(settings.customClaudeApiKey || "");
+  const [showClaudeKey, setShowClaudeKey] = useState(false);
+  const [claudeTestStatus, setClaudeTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
+  const [claudeTestMessage, setClaudeTestMessage] = useState<string>("");
+  const [claudeSaveNotice, setClaudeSaveNotice] = useState<boolean>(false);
+
   if (!isOpen) return null;
 
   const handleSaveApiKey = () => {
@@ -59,6 +67,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setTimeout(() => setSaveNotice(false), 2500);
     } catch {
       // ignore
+    }
+  };
+
+  const handleSaveClaudeApiKey = () => {
+    const trimmed = claudeKeyInput.trim();
+    onUpdateSettings({ customClaudeApiKey: trimmed });
+    try {
+      localStorage.setItem("gold_orderflow_claude_key", trimmed);
+      setClaudeSaveNotice(true);
+      setTimeout(() => setClaudeSaveNotice(false), 2500);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleTestClaudeApiKey = async () => {
+    const keyToTest = claudeKeyInput.trim() || settings.customClaudeApiKey || "";
+    if (!keyToTest) {
+      setClaudeTestStatus("error");
+      setClaudeTestMessage("يرجى إدخال مفتاح Claude API أولاً.");
+      return;
+    }
+
+    setClaudeTestStatus("testing");
+    setClaudeTestMessage("جاري فحص الاتصال بخوادم Anthropic Claude...");
+    try {
+      const res = await fetch("/api/claude/test-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: keyToTest }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setClaudeTestStatus("success");
+        setClaudeTestMessage(data.message);
+        handleSaveClaudeApiKey();
+      } else {
+        setClaudeTestStatus("error");
+        setClaudeTestMessage(data.message || "مفتاح Claude غير صالح.");
+      }
+    } catch (err: any) {
+      setClaudeTestStatus("error");
+      setClaudeTestMessage("تعذر الفحص: " + (err?.message || "يرجى التحقق من اتصال الإنترنت"));
     }
   };
 
@@ -319,6 +370,159 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* CLAUDE (ANTHROPIC) CONFIGURATION */}
+              <div className="space-y-4 pt-4 border-t border-slate-800">
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-transparent border border-orange-500/30">
+                  <div className="flex items-start gap-2.5">
+                    <Bot className="w-5 h-5 text-orange-400 mt-0.5 shrink-0" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-orange-300">الذكاء الاصطناعي الثاني: Claude 3.7 Sonnet (Anthropic)</p>
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        يدعم التطبيق الآن محرك Claude 3.7 / 3.5 المتخصص في هندسة السيولة الذكية (Smart Money Concepts) وتحديد مناطق الكسر الهيكلي (BOS/CHoCH) جنباً إلى جنب مع Gemini.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Claude Key Input */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-slate-300 font-semibold flex items-center gap-1.5">
+                      <Key className="w-3.5 h-3.5 text-orange-400" />
+                      <span>مفتاح Claude API الشخصي (اختياري):</span>
+                    </label>
+                    <a
+                      href="https://console.anthropic.com/settings/keys"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-orange-400 hover:text-orange-300 flex items-center gap-1 hover:underline"
+                    >
+                      <span>حساب Anthropic Console</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+
+                  <div className="relative flex items-center">
+                    <input
+                      type={showClaudeKey ? "text" : "password"}
+                      value={claudeKeyInput}
+                      onChange={(e) => {
+                        setClaudeKeyInput(e.target.value);
+                        setClaudeTestStatus("idle");
+                      }}
+                      placeholder="sk-ant-api03-..."
+                      className="w-full pl-24 pr-10 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 font-mono text-xs focus:outline-hidden focus:border-orange-400 transition-colors"
+                    />
+                    <div className="absolute right-3 text-slate-400">
+                      <Key className="w-4 h-4" />
+                    </div>
+                    <div className="absolute left-2.5 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowClaudeKey(!showClaudeKey)}
+                        className="p-1 rounded text-slate-400 hover:text-slate-200 cursor-pointer"
+                        title={showClaudeKey ? "إخفاء" : "إظهار"}
+                      >
+                        {showClaudeKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                      {claudeKeyInput && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setClaudeKeyInput("");
+                            onUpdateSettings({ customClaudeApiKey: "" });
+                            try { localStorage.removeItem("gold_orderflow_claude_key"); } catch {}
+                            setClaudeTestStatus("idle");
+                          }}
+                          className="p-1 rounded text-slate-400 hover:text-rose-400 cursor-pointer text-xs"
+                          title="مسح"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Claude Test & Save Buttons */}
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
+                    <button
+                      onClick={handleTestClaudeApiKey}
+                      disabled={claudeTestStatus === "testing"}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-semibold text-xs transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {claudeTestStatus === "testing" ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>جاري فحص المفتاح...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>فحص واختبار مفتاح Claude</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={handleSaveClaudeApiKey}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-all cursor-pointer"
+                    >
+                      <span>حفظ المفتاح</span>
+                    </button>
+
+                    {claudeSaveNotice && (
+                      <span className="text-[11px] text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>تم حفظ مفتاح Claude بنجاح!</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Claude Test Status Feedback */}
+                  {claudeTestStatus === "success" && (
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{claudeTestMessage}</span>
+                    </div>
+                  )}
+
+                  {claudeTestStatus === "error" && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px] flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{claudeTestMessage}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Claude Model Selection */}
+                <div className="space-y-2 pt-2 border-t border-slate-800">
+                  <label className="text-slate-300 font-semibold block">نموذج Claude المعتمد:</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {[
+                      { id: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet", desc: "أقوى نموذج استدلال هيكلي لمفاهيم SMC (موصى به)" },
+                      { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet", desc: "تحليل عالي الدقة للسيولة والفجوات السعرية" },
+                      { id: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku", desc: "استجابة فورية خفيفة وسريعة للذهب" },
+                    ].map((m) => {
+                      const isSelected = (settings.claudeModel || "claude-3-7-sonnet-20250219") === m.id || (settings.claudeModel?.includes("3.7") && m.id.includes("3-7"));
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => onUpdateSettings({ claudeModel: m.id })}
+                          className={`p-2.5 rounded-xl border text-right transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-orange-500/15 border-orange-400 text-orange-300 shadow-sm"
+                              : "bg-slate-950/60 border-slate-800/80 text-slate-300 hover:bg-slate-900"
+                          }`}
+                        >
+                          <div className="font-mono font-bold text-xs">{m.label}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">{m.desc}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
