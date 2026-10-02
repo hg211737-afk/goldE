@@ -53,6 +53,10 @@ import { SettingsModal } from "./components/SettingsModal";
 import { OfflineNotice } from "./components/OfflineNotice";
 import { PendingLimitOrdersSection } from "./components/PendingLimitOrdersSection";
 import { generateInstitutionalPendingLimits } from "./services/pendingLimitService";
+import { WhaleSonarRadarView } from "./components/WhaleSonarRadarView";
+import { MonteCarloSimulatorView } from "./components/MonteCarloSimulatorView";
+import { CentralBankWarRoomView } from "./components/CentralBankWarRoomView";
+import { GoldSqueezeGauge } from "./components/GoldSqueezeGauge";
 
 export function App() {
   const [quote, setQuote] = useState<GoldQuote>({
@@ -138,6 +142,13 @@ export function App() {
   const macroReport = useMemo(() => {
     return getMacroCorrelationData(quote.price);
   }, [quote.price]);
+
+  const pendingLimitSetups = useMemo(() => {
+    return generateInstitutionalPendingLimits({
+      currentPrice: quote.price,
+      macroReport,
+    });
+  }, [quote.price, macroReport]);
 
   const audioCtxRef = React.useRef<AudioContext | null>(null);
 
@@ -409,6 +420,10 @@ export function App() {
           setAiModalInitialTab("claude");
           setIsAiModalOpen(true);
         }}
+        onOpenPendingLimitsModal={() => {
+          setAiModalInitialTab("pending_limits");
+          setIsAiModalOpen(true);
+        }}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         isAiLoading={isAiLoading}
         activeLiquidityCount={liquidityZones.filter((z) => z.status === "untested").length}
@@ -421,6 +436,10 @@ export function App() {
       />
       
       <MarketSessionWidget />
+
+      <div className="px-1.5 sm:px-3 pt-1">
+        <GoldSqueezeGauge currentPrice={quote.price} />
+      </div>
 
       {alertBanner && (
         <div className="bg-gradient-to-r from-amber-600 via-rose-600 to-amber-600 text-white px-4 py-1.5 text-xs font-bold text-center flex items-center justify-center gap-2 animate-bounce select-none shadow-md">
@@ -482,6 +501,15 @@ export function App() {
               preferredModel={settings.aiModel}
             />
           )}
+          {viewMode === "radar" && (
+            <WhaleSonarRadarView currentPrice={quote.price} />
+          )}
+          {viewMode === "montecarlo" && (
+            <MonteCarloSimulatorView currentPrice={quote.price} />
+          )}
+          {viewMode === "warroom" && (
+            <CentralBankWarRoomView currentPrice={quote.price} />
+          )}
           {viewMode === "tradingview" && <TradingViewWidget timeframe={timeframe} />}
         </main>
 
@@ -491,6 +519,21 @@ export function App() {
           }`}
         >
           <div className="flex items-center bg-slate-900 border-b border-slate-800 p-1 gap-0.5">
+            <button
+              onClick={() => {
+                setSidebarTab("pending_limits");
+                setMobileTab("pending_limits");
+              }}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                mobileTab === "pending_limits" || sidebarTab === "pending_limits"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-xs font-black"
+                  : "text-emerald-400 hover:text-white hover:bg-slate-800"
+              }`}
+              title="صفقات Limit المعلقة فائقة الضمان (السعر لم يصل إليها بعد)"
+            >
+              <Clock className="w-3.5 h-3.5 text-emerald-300" />
+              <span>أوامر Limit</span>
+            </button>
             <button
               onClick={() => {
                 setSidebarTab("liquidity");
@@ -551,6 +594,15 @@ export function App() {
           </div>
 
           <div className="flex-1 overflow-hidden">
+            {(mobileTab === "pending_limits" || (mobileTab === "chart" && sidebarTab === "pending_limits")) && (
+              <div className="h-full overflow-y-auto p-2">
+                <PendingLimitOrdersSection
+                  setups={pendingLimitSetups}
+                  currentPrice={quote.price}
+                  compact={true}
+                />
+              </div>
+            )}
             {(mobileTab === "liquidity" || (mobileTab === "chart" && sidebarTab === "liquidity")) && (
               <LiquidityZonesList
                 zones={liquidityZones}
@@ -672,6 +724,7 @@ export function App() {
         isOpen={isAiModalOpen}
         onClose={() => setIsAiModalOpen(false)}
         analysis={aiAnalysis}
+        pendingLimitSetups={pendingLimitSetups}
         initialTab={aiModalInitialTab}
         isLoading={isAiLoading}
         onRefresh={handleTriggerAiAnalysis}

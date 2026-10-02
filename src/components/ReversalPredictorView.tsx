@@ -31,6 +31,7 @@ import {
   calculateCustomReversal,
   predictGoldMovementWithAI,
 } from "../services/reversalPredictorService";
+import { InteractiveGoldTrajectoryCanvas } from "./InteractiveGoldTrajectoryCanvas";
 
 interface ReversalPredictorViewProps {
   currentPrice: number;
@@ -224,6 +225,15 @@ export const ReversalPredictorView: React.FC<ReversalPredictorViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* State-of-the-Art Interactive Gold Trajectory Flight Path Canvas */}
+      <InteractiveGoldTrajectoryCanvas
+        currentPrice={currentPrice}
+        primaryDirection={prediction.primaryDirection}
+        reversalPrice={prediction.reversalPivots.bullishBounce.price}
+        target1Price={prediction.targetMagnets.primaryTarget.price}
+        target2Price={prediction.targetMagnets.secondaryTarget.price}
+      />
 
       {/* 2. Visual Step-by-Step Trajectory Path Map (Interactive Map) */}
       <div className="bg-[#111622] border border-slate-800 rounded-2xl p-3 sm:p-5 flex flex-col gap-3">

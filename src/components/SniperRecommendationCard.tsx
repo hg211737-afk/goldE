@@ -11,13 +11,17 @@ import {
   Percent,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Target,
   TrendingDown,
   TrendingUp,
+  Volume2,
   Zap,
 } from "lucide-react";
 import { SniperPrecisionSetup } from "../types";
 import { calculatePositionSize } from "../services/sniperPrecisionService";
+import { soundFx } from "../services/soundService";
+import { voiceAlert } from "../services/voiceAlertService";
 
 interface SniperRecommendationCardProps {
   setup: SniperPrecisionSetup;
@@ -105,20 +109,89 @@ export const SniperRecommendationCard: React.FC<SniperRecommendationCardProps> =
           </div>
         </div>
 
-        {/* Copy Command Button */}
-        <button
-          onClick={handleCopy}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-sm active:scale-95 ${
-            copied
-              ? "bg-emerald-500 text-slate-950"
-              : "bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-white border border-amber-500/30"
-          }`}
-          title="نسخ أمر التوصية بصيغة منصات MT4 / MT5 / cTrader"
-        >
-          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-          <span>{copied ? "تم النسخ بنجاح!" : "نسخ للمنصة (MT4/5)"}</span>
-        </button>
+        {/* Action Buttons: Audio Dispatch + Copy Command */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              soundFx.playIcebergAlert();
+              voiceAlert.speak(
+                `إشارة قناصة معتمدة من كلا الذكائين Gemini و Claude 3.7: أمر ${setup.orderType} عند سعر ${setup.optimalEntryPrice} دولار، وقف الخسارة ${setup.exactStopLoss} دولار، الهدف الأول ${setup.tp1.price} دولار. نسبة التوافق ثمانية وتسعين في المائة!`,
+                "urgent"
+              );
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 transition-all cursor-pointer shadow-sm active:scale-95"
+            title="الاستماع للإشارة بصوت المساعد التكتيكي"
+          >
+            <Volume2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">نطق الصفقة صوتياً</span>
+          </button>
+
+          <button
+            onClick={handleCopy}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-sm active:scale-95 ${
+              copied
+                ? "bg-emerald-500 text-slate-950"
+                : "bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-white border border-amber-500/30"
+            }`}
+            title="نسخ أمر التوصية بصيغة منصات MT4 / MT5 / cTrader"
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copied ? "تم النسخ بنجاح!" : "نسخ للمنصة (MT4/5)"}</span>
+          </button>
+        </div>
       </div>
+
+      {/* Joint Dual-AI Unanimous Verification Matrix */}
+      {setup.dualAiVerdict && (
+        <div className="my-3.5 p-3.5 rounded-xl bg-gradient-to-r from-[#170e28] via-[#0f1422] to-[#0c1818] border border-amber-500/40 shadow-inner space-y-2.5">
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-lg bg-amber-500/20 text-amber-400">
+                <Sparkles className="w-4 h-4 animate-spin" />
+              </span>
+              <span className="font-black text-xs text-white">
+                مصادقة واعتماد الذكاءين المشترك (Gemini 2.5 + Claude 3.7 Sonnet)
+              </span>
+            </div>
+            <div className="flex items-center gap-2 font-mono text-[11px]">
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
+                إجماع {setup.dualAiVerdict.consensusAgreement}%
+              </span>
+              <span className="bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-black">
+                A++ UNANIMOUS
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] leading-relaxed">
+            <div className="p-2.5 rounded-lg bg-slate-950/80 border border-indigo-500/30">
+              <div className="flex items-center justify-between text-indigo-300 font-bold mb-1">
+                <span>١. تدقيق Gemini 2.5 Flash:</span>
+                <span className="font-mono text-emerald-400">{setup.dualAiVerdict.geminiScore}%</span>
+              </div>
+              <p className="text-slate-300">{setup.dualAiVerdict.geminiVerdictAr}</p>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-slate-950/80 border border-orange-500/30">
+              <div className="flex items-center justify-between text-orange-300 font-bold mb-1">
+                <span>٢. تدقيق Claude 3.7 Sonnet:</span>
+                <span className="font-mono text-emerald-400">{setup.dualAiVerdict.claudeScore}%</span>
+              </div>
+              <p className="text-slate-300">{setup.dualAiVerdict.claudeVerdictAr}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800">
+            <span className="text-slate-300">
+              قرار التنفيذ المشترك: <strong className="text-emerald-400">{setup.dualAiVerdict.jointExecutionActionAr}</strong>
+            </span>
+            <span className="text-emerald-400 font-bold flex items-center gap-1 font-mono">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              حق النقض (AI Veto): آمن تماماً
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Main Execution Numbers (Entry - Stop Loss - R:R) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4">

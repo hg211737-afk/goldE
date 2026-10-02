@@ -9,14 +9,18 @@ import {
   Cpu,
   Crosshair,
   Flame,
+  Landmark,
   Layers,
+  Radio,
   RotateCw,
   SlidersHorizontal,
+  Sparkles,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import { GoldQuote, Timeframe, ViewMode } from "../types";
 import { PWAInstallButton } from "./PWAInstallButton";
+import { TacticalVoiceCoPilot } from "./TacticalVoiceCoPilot";
 
 interface HeaderProps {
   quote: GoldQuote;
@@ -177,6 +181,8 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </button>
 
+            <TacticalVoiceCoPilot currentPrice={quote.price} />
+
             <PWAInstallButton />
 
             <button
@@ -289,6 +295,48 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-[9px] bg-amber-400/30 text-amber-200 px-1 py-0.2 rounded font-bold">
                 جديد
               </span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("radar")}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "radar"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md font-black"
+                  : "text-emerald-400 hover:text-emerald-300 hover:bg-slate-800/60"
+              }`}
+              title="رادار الحيتان وسونار كشف أوامر الآيسبرغ المخفية والتلاعب"
+            >
+              <Radio className="w-3.5 h-3.5 animate-pulse" />
+              <span>رادار الحيتان</span>
+              <span className="text-[9px] bg-emerald-400 text-slate-950 px-1 py-0.2 rounded font-black hidden sm:inline">
+                سونار
+              </span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("montecarlo")}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "montecarlo"
+                  ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md font-black"
+                  : "text-amber-400 hover:text-amber-300 hover:bg-slate-800/60"
+              }`}
+              title="محاكي مونتي كارلو العصبي لـ 1,000 مسار احتمالي ومخروط الثقة 95%"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>مونتي كارلو</span>
+              <span className="text-[9px] bg-amber-400/20 text-amber-300 px-1 py-0.2 rounded font-mono font-bold hidden sm:inline">
+                1000 مسار
+              </span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("warroom")}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "warroom"
+                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md font-black"
+                  : "text-indigo-400 hover:text-indigo-300 hover:bg-slate-800/60"
+              }`}
+              title="غرفة العمليات الاستراتيجية وتدفقات الذهب السيادي للبنوك المركزية"
+            >
+              <Landmark className="w-3.5 h-3.5" />
+              <span>العمليات السيادية</span>
             </button>
             <button
               onClick={() => onViewModeChange("signals")}

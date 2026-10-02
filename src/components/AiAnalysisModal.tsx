@@ -30,6 +30,9 @@ import { DualSmartLevelsWidget } from "./DualSmartLevelsWidget";
 import { CorrelationWidget } from "./CorrelationWidget";
 import { ConfluenceMatrixWidget } from "./ConfluenceMatrixWidget";
 import { PendingLimitOrdersSection } from "./PendingLimitOrdersSection";
+import { ClaudeAdvancedAnalysisWidget } from "./ClaudeAdvancedAnalysisWidget";
+import { UnifiedAiSuperConfluenceCard } from "./UnifiedAiSuperConfluenceCard";
+import { InteractiveGoldTrajectoryCanvas } from "./InteractiveGoldTrajectoryCanvas";
 import { generateDualSmartLevels, getMacroCorrelationData } from "../services/correlationService";
 import { recordTradeOutcome, getLearningStats } from "../services/goldService";
 import { generateTpoMarketProfile } from "../services/marketProfileService";
@@ -454,6 +457,15 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                 </div>
               </div>
 
+              {/* State-of-the-Art Interactive Gold Trajectory Flight Path Canvas */}
+              <InteractiveGoldTrajectoryCanvas
+                currentPrice={currentPrice}
+                primaryDirection={movementPrediction.primaryDirection}
+                reversalPrice={movementPrediction.reversalPivots.bullishBounce.price}
+                target1Price={movementPrediction.targetMagnets.primaryTarget.price}
+                target2Price={movementPrediction.targetMagnets.secondaryTarget.price}
+              />
+
               {/* Answers Grid: Where it will go & Where it will reverse */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* 1. أين سيذهب الذهب القادم؟ */}
@@ -723,139 +735,20 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
               </div>
             </div>
           ) : modalTab === "claude" ? (
-            <div className="space-y-4">
-              {/* Claude Header Banner */}
-              <div className="p-4 rounded-xl bg-gradient-to-r from-orange-500/15 via-slate-900 to-slate-900 border border-orange-500/40 flex items-center justify-between flex-wrap gap-2 shadow-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white shadow-md">
-                    <Bot className="w-5 h-5 animate-pulse" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                      تحليل ذكاء كلاود المؤسسي (Claude 3.7 Sonnet)
-                      <span className="text-[10px] bg-orange-500/20 text-orange-300 px-2 py-0.5 rounded-full font-mono border border-orange-500/40">
-                        {activeClaude?.model || "Claude 3.7 Sonnet"}
-                      </span>
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
-                        ثقة {activeClaude?.confidenceScore || 91}%
-                      </span>
-                    </h3>
-                    <p className="text-[11px] text-slate-400">
-                      هيكل السوق المؤسسي (SMC) • الكسر الهيكلي BOS • مصائد الإغراء Inducement • مناطق الارتداد الدقيقة
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-right font-['JetBrains_Mono']">
-                  <span className="text-[10px] text-slate-400 block font-['Cairo']">السعر اللحظي:</span>
-                  <span className="text-sm font-black text-amber-400">
-                    ${currentPrice.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Claude SMC Structural Summary */}
-              <div className="p-4 rounded-xl bg-[#0b0f19] border border-orange-500/30 space-y-2">
-                <div className="flex items-center gap-2 text-orange-400 font-bold text-xs">
-                  <Sparkles className="w-4 h-4" />
-                  <span>الرؤية الهيكلية الشاملة لكلاود (Claude Deep SMC Insight)</span>
-                </div>
-                <p className="text-slate-200 text-xs leading-relaxed">
-                  {activeClaude?.summaryAr}
+            activeClaude ? (
+              <ClaudeAdvancedAnalysisWidget
+                analysis={activeClaude}
+                currentPrice={currentPrice}
+              />
+            ) : (
+              <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+                <Bot className="w-8 h-8 text-orange-400 animate-spin" />
+                <h4 className="text-sm font-bold text-white">جاري توليد تحليل Claude 3.7 المتطور...</h4>
+                <p className="text-xs text-slate-400">
+                  يقوم الذكاء بتفكيك مصائد السيولة، وتحليل الأخبار الاقتصادية الكبرى، ومطابقة توقيت الجلسات
                 </p>
               </div>
-
-              {/* Market Structure & Inducement Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5">
-                  <span className="text-xs font-bold text-amber-400 block flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4" />
-                    <span>هيكل السوق (Market Structure BOS &amp; CHoCH):</span>
-                  </span>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    {activeClaude?.marketStructureAr}
-                  </p>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5">
-                  <span className="text-xs font-bold text-rose-400 block flex items-center gap-1.5">
-                    <Target className="w-4 h-4" />
-                    <span>فخاخ السيولة والإغراء (Liquidity Inducement):</span>
-                  </span>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    {activeClaude?.liquidityInducementAr}
-                  </p>
-                </div>
-              </div>
-
-              {/* Targets & Reversal Points from Claude */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="p-3.5 rounded-xl bg-[#0b0f19] border border-emerald-500/30 space-y-2">
-                  <span className="text-xs font-bold text-emerald-400 block">
-                    📍 من أين سيرتد الذهب وفق Claude؟
-                  </span>
-                  <p className="text-xs text-slate-200">
-                    {activeClaude?.reversalPointAr}
-                  </p>
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800 font-mono">
-                    <span className="text-slate-400 font-['Cairo']">مستوى الارتداد:</span>
-                    <span className="font-bold text-emerald-400">{activeClaude?.keyLevels?.bounceLevel}</span>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-[#0b0f19] border border-amber-500/30 space-y-2">
-                  <span className="text-xs font-bold text-amber-400 block">
-                    🎯 أين سيذهب الذهب وفق Claude؟
-                  </span>
-                  <p className="text-xs text-slate-200">
-                    {activeClaude?.targetDestinationAr}
-                  </p>
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800 font-mono">
-                    <span className="text-slate-400 font-['Cairo']">الهدف الأول / الثاني:</span>
-                    <span className="font-bold text-amber-400">{activeClaude?.keyLevels?.target1} | {activeClaude?.keyLevels?.target2}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Claude Trade Setup Box */}
-              {activeClaude?.tradeSetup && (
-                <div className="p-4 rounded-xl bg-gradient-to-br from-[#121622] to-[#0c101a] border border-orange-500/40 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                      خطة صفقة كلاود المقترحة (Claude Execution Setup)
-                    </span>
-                    <span className="text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-lg">
-                      {activeClaude.tradeSetup.action}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-['JetBrains_Mono']">
-                    <div className="p-2 bg-slate-900 rounded-lg border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block font-['Cairo']">نطاق الدخول:</span>
-                      <span className="text-amber-400 font-bold">{activeClaude.tradeSetup.entryZone}</span>
-                    </div>
-                    <div className="p-2 bg-slate-900 rounded-lg border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block font-['Cairo']">وقف الخسارة SL:</span>
-                      <span className="text-rose-400 font-bold">{activeClaude.tradeSetup.stopLoss}</span>
-                    </div>
-                    <div className="p-2 bg-slate-900 rounded-lg border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block font-['Cairo']">الهدف TP1:</span>
-                      <span className="text-emerald-400 font-bold">{activeClaude.tradeSetup.takeProfit1}</span>
-                    </div>
-                    <div className="p-2 bg-slate-900 rounded-lg border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block font-['Cairo']">العائد للمخاطرة R:R:</span>
-                      <span className="text-teal-400 font-bold">{activeClaude.tradeSetup.riskReward}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
-                    <strong className="text-amber-400 block mb-0.5">منطق الصفقة:</strong>
-                    {activeClaude.tradeSetup.rationaleAr}
-                  </p>
-                </div>
-              )}
-            </div>
+            )
           ) : modalTab === "correlation" ? (
             <div className="h-[480px]">
               <CorrelationWidget
@@ -1022,6 +915,13 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                   فتح شاشة الأوامر المعلقة ←
                 </span>
               </div>
+
+              {/* Unified AI Super-Confluence: Connecting Whales, Monte Carlo, Central Banks & Squeeze */}
+              <UnifiedAiSuperConfluenceCard
+                currentPrice={currentPrice}
+                engineName="Dual AI Consensus"
+                superConfluence={analysis?.superConfluenceSynthesis || activeClaude?.superConfluenceSynthesis}
+              />
 
               {/* Top Metric Bar */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

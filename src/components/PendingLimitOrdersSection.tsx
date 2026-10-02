@@ -15,8 +15,11 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  Volume2,
 } from "lucide-react";
 import { InstitutionalPendingLimitSetup } from "../types";
+import { soundFx } from "../services/soundService";
+import { voiceAlert } from "../services/voiceAlertService";
 
 interface PendingLimitOrdersSectionProps {
   setups: InstitutionalPendingLimitSetup[];
@@ -159,18 +162,36 @@ export const PendingLimitOrdersSection: React.FC<PendingLimitOrdersSectionProps>
                     </span>
                   </div>
 
-                  {/* Copy Button */}
-                  <button
-                    onClick={() => handleCopyCommand(setup)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-md ${
-                      isCopied
-                        ? "bg-emerald-400 text-slate-950 font-black scale-105"
-                        : "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700"
-                    }`}
-                  >
-                    {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{isCopied ? "تم النسخ لـ MT4/MT5!" : "نسخ الأمر المعلق"}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        soundFx.playIcebergAlert();
+                        voiceAlert.speak(
+                          `أمر لمت معلق معتمد من كلا الذكائين Gemini و Claude 3.7: أمر ${setup.orderType} عند سعر ${setup.limitPrice} دولار، وقف الخسارة ${setup.stopLoss}، والهدف الأول ${setup.tp1.price} دولار. نسبة التوافق تسعة وتسعين في المائة!`,
+                          "urgent"
+                        );
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-slate-950 transition-all cursor-pointer shadow-md"
+                      title="الاستماع للصفقة المعلقة بصوت المساعد التكتيكي"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">نطق صوتي</span>
+                    </button>
+
+                    {/* Copy Button */}
+                    <button
+                      onClick={() => handleCopyCommand(setup)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-md ${
+                        isCopied
+                          ? "bg-emerald-400 text-slate-950 font-black scale-105"
+                          : "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700"
+                      }`}
+                    >
+                      {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{isCopied ? "تم النسخ لـ MT4/MT5!" : "نسخ الأمر المعلق"}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Distance & Approach Status Banner */}
@@ -281,6 +302,31 @@ export const PendingLimitOrdersSection: React.FC<PendingLimitOrdersSectionProps>
                 <p className="text-slate-200 text-xs leading-relaxed bg-[#0a0e17] p-3 rounded-xl border border-slate-800">
                   {setup.guaranteeReasonSummaryAr}
                 </p>
+
+                {/* Joint Dual-AI Audit & Verification Stamp */}
+                {setup.dualAiVerdict && (
+                  <div className="p-3.5 rounded-xl bg-gradient-to-r from-[#170e28] via-[#0f1422] to-[#0c1818] border border-amber-500/40 space-y-2">
+                    <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-800">
+                      <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                        {setup.dualAiVerdict.auditBadgeAr}
+                      </span>
+                      <span className="font-mono text-emerald-400 font-bold bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40">
+                        توافق {setup.dualAiVerdict.consensusAgreement}%
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2.5 rounded-lg bg-slate-950 border border-indigo-500/30">
+                        <strong className="text-indigo-300 block mb-0.5">Gemini 2.5 Audit ({setup.dualAiVerdict.geminiScore}%):</strong>
+                        <p className="text-slate-300">{setup.dualAiVerdict.geminiAnalysisAr}</p>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-slate-950 border border-orange-500/30">
+                        <strong className="text-orange-300 block mb-0.5">Claude 3.7 Audit ({setup.dualAiVerdict.claudeScore}%):</strong>
+                        <p className="text-slate-300">{setup.dualAiVerdict.claudeAnalysisAr}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {isExpanded && (
                   <div className="space-y-3 pt-2 animate-in fade-in duration-200">

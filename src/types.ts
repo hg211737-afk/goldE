@@ -140,7 +140,10 @@ export type ViewMode =
   | "futures"
   | "marketprofile"
   | "signals"
-  | "predictor";
+  | "predictor"
+  | "radar"
+  | "montecarlo"
+  | "warroom";
 
 export interface TpoLevelData {
   price: number;
@@ -412,6 +415,19 @@ export interface SniperPrecisionSetup {
   mtCommand: string;
   status: "active" | "triggered" | "tp1_hit" | "tp2_hit" | "cancelled";
   timestamp: number;
+
+  // Joint Dual-AI (Gemini + Claude) Audit & Approval System
+  dualAiVerdict?: {
+    geminiScore: number;
+    geminiVerdictAr: string;
+    claudeScore: number;
+    claudeVerdictAr: string;
+    consensusAgreement: number; // e.g. 98.6%
+    isUnanimous: boolean;
+    vetoTriggered: boolean;
+    vetoReasonAr?: string;
+    jointExecutionActionAr: string;
+  };
 }
 
 export interface AiAnalysisResult {
@@ -449,6 +465,14 @@ export interface AiAnalysisResult {
   claudeAnalysis?: ClaudeAnalysisResult;
   confluenceMatrix?: ConfluenceMatrix;
   pendingLimitSetups?: InstitutionalPendingLimitSetup[];
+  // Unified Super-Confluence AI Synthesis (All 5 Pillars Connected)
+  superConfluenceSynthesis?: {
+    whaleSonarAr: string;
+    monteCarloProbAr: string;
+    centralBankDrainAr: string;
+    shortSqueezeThreatAr: string;
+    masterSynthesisAr: string;
+  };
 }
 
 export interface ConfluenceFactor {
@@ -516,6 +540,38 @@ export interface ClaudeAnalysisResult {
   };
   keyAdvice: string;
   timestamp: number;
+  // Advanced Liquidity Intelligence (SMC & Pools)
+  liquidityIntelligence?: {
+    bslPoolLevel: string;
+    sslPoolLevel: string;
+    fvgImbalanceZone: string;
+    inducementTrapLevel: string;
+    marketState: "Discount_Zone" | "Premium_Zone" | "Equilibrium";
+    liquidityCycleStageAr: string;
+  };
+  // High-Impact News & Macro Catalysts
+  newsIntelligence?: {
+    upcomingEventsAr: string[];
+    sentimentImpactAr: string;
+    volatilityRiskLevel: "High Volatility" | "Moderate" | "Extreme Shock Risk";
+    catalystThesisAr: string;
+  };
+  // Market Sessions & Killzone Timing
+  sessionIntelligence?: {
+    activeSessionAr: string;
+    killzoneStatusAr: string;
+    judasSwingAr: string;
+    silverBulletTimeWindowAr: string;
+    asianRangeRaidStatusAr: string;
+  };
+  // Unified Super-Confluence AI Synthesis (All 5 Pillars Connected)
+  superConfluenceSynthesis?: {
+    whaleSonarAr: string;
+    monteCarloProbAr: string;
+    centralBankDrainAr: string;
+    shortSqueezeThreatAr: string;
+    masterSynthesisAr: string;
+  };
 }
 
 export interface ReversalPivotZone {
@@ -647,5 +703,16 @@ export interface InstitutionalPendingLimitSetup {
   mtCommand: string;
   validitySessionAr: string;
   timestamp: number;
+
+  // Joint Dual-AI Audit & Approval
+  dualAiVerdict?: {
+    geminiScore: number;
+    claudeScore: number;
+    consensusAgreement: number;
+    isUnanimous: boolean;
+    auditBadgeAr: string;
+    geminiAnalysisAr: string;
+    claudeAnalysisAr: string;
+  };
 }
 
