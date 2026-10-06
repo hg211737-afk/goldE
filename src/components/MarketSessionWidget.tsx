@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Clock, Globe, ShieldAlert, Sparkles, TrendingUp, Zap, AlertCircle } from "lucide-react";
+import { Clock, Globe, ShieldAlert, Sparkles, TrendingUp, Zap, AlertCircle, BarChart3 } from "lucide-react";
 import { getCurrentMarketSession, MarketSessionInfo } from "../services/sessionService";
 
-export const MarketSessionWidget: React.FC = () => {
+interface MarketSessionWidgetProps {
+  onOpenReport?: () => void;
+  currentPrice?: number;
+}
+
+export const MarketSessionWidget: React.FC<MarketSessionWidgetProps> = ({
+  onOpenReport,
+  currentPrice,
+}) => {
   const [sessionInfo, setSessionInfo] = useState<MarketSessionInfo>(getCurrentMarketSession());
   const [currentTimeUTC, setCurrentTimeUTC] = useState<string>("");
 
@@ -73,6 +81,17 @@ export const MarketSessionWidget: React.FC = () => {
             {sessionInfo.activeConditionsMet ? <TrendingUp className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
             <span>{sessionInfo.recommendedAction}</span>
           </div>
+
+          {onOpenReport && (
+            <button
+              onClick={onOpenReport}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs cursor-pointer transition-all shadow-xs"
+              title="عرض تقرير أداء الجلسات وسحوبات السيولة (Win Rate & Profit Factor)"
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>تقرير أداء الجلسات</span>
+            </button>
+          )}
         </div>
 
       </div>

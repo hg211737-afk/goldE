@@ -20,6 +20,7 @@ import {
   Layers,
   CheckCircle2,
   XCircle,
+  Brain,
   BrainCircuit,
   Sparkles,
   Link2,
@@ -33,6 +34,8 @@ import { PendingLimitOrdersSection } from "./PendingLimitOrdersSection";
 import { ClaudeAdvancedAnalysisWidget } from "./ClaudeAdvancedAnalysisWidget";
 import { UnifiedAiSuperConfluenceCard } from "./UnifiedAiSuperConfluenceCard";
 import { InteractiveGoldTrajectoryCanvas } from "./InteractiveGoldTrajectoryCanvas";
+import { GoldMachineLearningView } from "./GoldMachineLearningView";
+import { SessionPerformanceReport } from "./SessionPerformanceReport";
 import { generateDualSmartLevels, getMacroCorrelationData } from "../services/correlationService";
 import { recordTradeOutcome, getLearningStats } from "../services/goldService";
 import { generateTpoMarketProfile } from "../services/marketProfileService";
@@ -49,7 +52,7 @@ interface AiAnalysisModalProps {
   analysis: AiAnalysisResult | null;
   claudeAnalysis?: ClaudeAnalysisResult | null;
   pendingLimitSetups?: InstitutionalPendingLimitSetup[];
-  initialTab?: "overview" | "pending_limits" | "confluence" | "claude" | "gemini" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation";
+  initialTab?: "overview" | "pending_limits" | "confluence" | "claude" | "gemini" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation" | "ml_model" | "session_report";
   isLoading: boolean;
   onRefresh: () => void;
   currentPrice: number;
@@ -78,7 +81,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   customClaudeApiKey,
   claudeModel = "Claude 3.7 Sonnet",
 }) => {
-  const [modalTab, setModalTab] = useState<"overview" | "pending_limits" | "confluence" | "claude" | "gemini" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation">("overview");
+  const [modalTab, setModalTab] = useState<"overview" | "pending_limits" | "confluence" | "claude" | "gemini" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation" | "ml_model" | "session_report">("overview");
   const [feedbackGiven, setFeedbackGiven] = useState<string | null>(null);
   const [localClaude, setLocalClaude] = useState<ClaudeAnalysisResult | null>(null);
   const [isClaudeLoading, setIsClaudeLoading] = useState<boolean>(false);
@@ -264,6 +267,36 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
           </button>
 
           <button
+            onClick={() => setModalTab("ml_model")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              modalTab === "ml_model"
+                ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 text-slate-950 font-black shadow-xs"
+                : "text-emerald-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <Brain className="w-3.5 h-3.5" />
+            <span>نموذج Machine Learning (10y)</span>
+            <span className="text-[10px] bg-emerald-400 text-slate-950 px-1.5 py-0.2 rounded font-mono font-bold">
+              LSTM+XGB
+            </span>
+          </button>
+
+          <button
+            onClick={() => setModalTab("session_report")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              modalTab === "session_report"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black shadow-xs"
+                : "text-blue-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <BarChart2 className="w-3.5 h-3.5" />
+            <span>تقرير أداء الجلسات</span>
+            <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.2 rounded font-mono font-bold">
+              NY+London
+            </span>
+          </button>
+
+          <button
             onClick={() => setModalTab("pending_limits")}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
               modalTab === "pending_limits"
@@ -417,6 +450,10 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                 </p>
               </div>
             </div>
+          ) : modalTab === "ml_model" ? (
+            <GoldMachineLearningView currentPrice={currentPrice} />
+          ) : modalTab === "session_report" ? (
+            <SessionPerformanceReport currentPrice={currentPrice} />
           ) : modalTab === "pending_limits" ? (
             <PendingLimitOrdersSection
               setups={pendingLimits}
@@ -921,6 +958,9 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                 currentPrice={currentPrice}
                 engineName="Dual AI Consensus"
                 superConfluence={analysis?.superConfluenceSynthesis || activeClaude?.superConfluenceSynthesis}
+                onOpenMlModel={() => setModalTab("ml_model")}
+                onOpenSessionReport={() => setModalTab("session_report")}
+                onOpenTrajectory={() => setModalTab("predictor")}
               />
 
               {/* Top Metric Bar */}

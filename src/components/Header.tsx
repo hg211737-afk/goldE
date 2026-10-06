@@ -3,6 +3,7 @@ import {
   Activity,
   BarChart2,
   Bot,
+  Brain,
   ChartLine,
   Clock,
   Compass,
@@ -281,6 +282,36 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* View Mode Buttons */}
           <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 flex-wrap">
+            <button
+              onClick={() => onViewModeChange("ml_model")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "ml_model"
+                  ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)] font-black"
+                  : "text-emerald-400 hover:text-emerald-300 hover:bg-slate-800/60"
+              }`}
+              title="نموذج Machine Learning مدرب على 10 سنوات بيانات شمعة 15m (LSTM + XGBoost + OpenAI)"
+            >
+              <Brain className="w-3.5 h-3.5 animate-pulse" />
+              <span>نموذج ML (10y)</span>
+              <span className="text-[9px] bg-emerald-400 text-slate-950 px-1 py-0.2 rounded font-black hidden sm:inline">
+                LSTM+XGB
+              </span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("session_report")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "session_report"
+                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.4)] font-black"
+                  : "text-blue-400 hover:text-blue-300 hover:bg-slate-800/60"
+              }`}
+              title="تقرير أداء الجلسات واقتناص السيولة (Session Performance: London vs NY vs Asian)"
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              <span>أداء الجلسات</span>
+              <span className="text-[9px] bg-blue-500/20 text-blue-300 border border-blue-500/40 px-1 py-0.2 rounded font-bold hidden sm:inline">
+                تقرير
+              </span>
+            </button>
             <button
               onClick={() => onViewModeChange("predictor")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${

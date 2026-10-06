@@ -57,6 +57,8 @@ import { WhaleSonarRadarView } from "./components/WhaleSonarRadarView";
 import { MonteCarloSimulatorView } from "./components/MonteCarloSimulatorView";
 import { CentralBankWarRoomView } from "./components/CentralBankWarRoomView";
 import { GoldSqueezeGauge } from "./components/GoldSqueezeGauge";
+import { GoldMachineLearningView } from "./components/GoldMachineLearningView";
+import { SessionPerformanceReport } from "./components/SessionPerformanceReport";
 
 export function App() {
   const [quote, setQuote] = useState<GoldQuote>({
@@ -435,7 +437,10 @@ export function App() {
         }}
       />
       
-      <MarketSessionWidget />
+      <MarketSessionWidget
+        onOpenReport={() => setViewMode("session_report")}
+        currentPrice={quote.price}
+      />
 
       <div className="px-1.5 sm:px-3 pt-1">
         <GoldSqueezeGauge currentPrice={quote.price} />
@@ -509,6 +514,16 @@ export function App() {
           )}
           {viewMode === "warroom" && (
             <CentralBankWarRoomView currentPrice={quote.price} />
+          )}
+          {viewMode === "ml_model" && (
+            <GoldMachineLearningView currentPrice={quote.price} bars={footprintBars} />
+          )}
+          {viewMode === "session_report" && (
+            <SessionPerformanceReport
+              currentPrice={quote.price}
+              bars={footprintBars}
+              liquidityZones={liquidityZones}
+            />
           )}
           {viewMode === "tradingview" && <TradingViewWidget timeframe={timeframe} />}
         </main>

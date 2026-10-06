@@ -143,7 +143,9 @@ export type ViewMode =
   | "predictor"
   | "radar"
   | "montecarlo"
-  | "warroom";
+  | "warroom"
+  | "ml_model"
+  | "session_report";
 
 export interface TpoLevelData {
   price: number;
@@ -715,4 +717,175 @@ export interface InstitutionalPendingLimitSetup {
     claudeAnalysisAr: string;
   };
 }
+
+// ==============================================================================
+// 3. 10-Year 15M Gold Machine Learning Types (LSTM + XGBoost + OpenAI Engine)
+// ==============================================================================
+
+export interface GoldMlInputs {
+  currentPrice: number;
+  smc: {
+    orderBlock: "bullish_ob" | "bearish_ob" | "neutral";
+    fvgStatus: "unmitigated_discount" | "unmitigated_premium" | "mitigated";
+    sweepType: "SSL_sweep" | "BSL_sweep" | "none";
+    chochDetected: boolean;
+    bosDetected: boolean;
+  };
+  dxy: {
+    price: number;
+    change15m: number;
+    correlationBeta: number;
+    trend: "bearish" | "bullish" | "neutral";
+  };
+  rsi: {
+    value: number;
+    divergence: "bullish_regular" | "bearish_regular" | "bullish_hidden" | "bearish_hidden" | "none";
+    slope: "rising" | "falling" | "flat";
+  };
+  news: {
+    redFolderUpcoming: boolean;
+    eventNameAr: string;
+    minutesToEvent: number;
+    sentimentScore: number;
+    geopoliticalRisk: number;
+  };
+  session: {
+    currentSession: "London Open" | "NY AM Silver Bullet" | "NY PM" | "Asia" | "Off-Session";
+    killzoneActive: boolean;
+    timeUtc: string;
+  };
+}
+
+export interface FeatureImportanceItem {
+  feature: string;
+  featureAr: string;
+  weightPercent: number;
+  impact: "bullish" | "bearish" | "neutral";
+  detailAr: string;
+}
+
+export interface TenYearEraPerformance {
+  era: string;
+  years: string;
+  marketRegimeAr: string;
+  candles15mCount: number;
+  winRatePercent: number;
+  profitFactor: number;
+}
+
+export interface GoldMlPredictionResult {
+  winProbabilityPercent: number;
+  lstmProbability: number;
+  xgboostProbability: number;
+  openAiSynthesizedScore: number;
+  recommendedAction: "BUY" | "SELL" | "HOLD";
+  actionGrade: "A++ Institutional Machine Learning" | "A High Probability" | "B Scalp Rejection";
+  confidenceScore: number;
+  expectedValueR: number;
+  riskRewardRatio: string;
+  featureImportance: FeatureImportanceItem[];
+  lstmMetrics: {
+    sequenceLength: number;
+    hiddenUnits: number;
+    memoryCellActivation: number;
+    loss: number;
+    valAccuracy: number;
+  };
+  xgboostMetrics: {
+    treesEvaluated: number;
+    maxDepth: number;
+    learningRate: number;
+    giniImpurity: number;
+    topSplits: string[];
+  };
+  tenYearBacktest: {
+    totalHistorical15mCandles: number;
+    totalTrades: number;
+    winRate: number;
+    profitFactor: number;
+    maxDrawdownPercent: number;
+    sharpeRatio: number;
+    eraAccuracies: TenYearEraPerformance[];
+  };
+  tradeSetup: {
+    entry: number;
+    entryRange: { min: number; max: number };
+    stopLoss: number;
+    slDistancePips: number;
+    tp1: number;
+    tp2: number;
+    tp3: number;
+    mtCommand: string;
+    rationaleAr: string;
+  };
+  reasoningAr: string;
+  aiEngine: "OpenAI GPT-4o + LSTM + XGBoost" | "Gemini 2.5 + LSTM + XGBoost" | "Ensemble ML Engine";
+  timestamp: number;
+}
+
+// ==============================================================================
+// 4. Automated Session Performance Report Types (London, NY, Asian Sweeps)
+// ==============================================================================
+
+export type TradingSessionKey = "london" | "new_york" | "asian";
+export type SweepPatternType = "SSL" | "BSL" | "JUDAS" | "ASIAN_RANGE";
+
+export interface DetectedSweepItem {
+  id: string;
+  timestamp: number;
+  timeFormatted: string;
+  session: TradingSessionKey;
+  sessionNameAr: string;
+  sweepType: SweepPatternType;
+  sweepTypeLabelAr: string;
+  sweptPrice: number;
+  reactionPrice: number;
+  targetPrice: number;
+  invalidationPrice: number;
+  outcome: "win" | "loss";
+  reactionPips: number;
+  riskRewardAchieved: number;
+  volumeLots: number;
+  notesAr: string;
+}
+
+export interface SingleSessionStats {
+  sessionKey: TradingSessionKey;
+  sessionName: string;
+  sessionNameAr: string;
+  hoursUtc: string;
+  colorAccent: string;
+  totalSweeps: number;
+  winningSweeps: number;
+  losingSweeps: number;
+  winRatePercent: number;
+  profitFactor: number;
+  grossProfitR: number;
+  grossLossR: number;
+  avgReactionPips: number;
+  avgRiskReward: string;
+  sslWinRate: number;
+  bslWinRate: number;
+  judasWinRate: number;
+  bestSetupAr: string;
+  tacticalAdviceAr: string;
+  rating: "A++" | "A+" | "B" | "C";
+  liquidityCharacteristicsAr: string;
+}
+
+export interface SessionPerformanceReportData {
+  calculatedAt: number;
+  dateRange: string;
+  totalSweepsAnalyzed: number;
+  overallWinRate: number;
+  overallProfitFactor: number;
+  london: SingleSessionStats;
+  newYork: SingleSessionStats;
+  asian: SingleSessionStats;
+  recentSweeps: DetectedSweepItem[];
+  keyFindingsAr: string[];
+  bestSessionToTradeAr: string;
+}
+
+
 
