@@ -42,11 +42,11 @@ export const TimeAndSales: React.FC<TimeAndSalesProps> = ({ trades }) => {
             في انتظار وصول صفقات جديدة...
           </div>
         ) : (
-          displayedTrades.slice(0, 30).map((trade) => {
+          displayedTrades.slice(0, 30).map((trade, idx) => {
             const isBuy = trade.side === "buy";
             return (
               <div
-                key={trade.id}
+                key={`${trade.id}-${idx}`}
                 className={`grid grid-cols-4 px-3 py-1 items-center text-center text-[11px] transition-colors ${
                   trade.isWhale
                     ? "bg-amber-500/10 font-bold"

@@ -4,6 +4,8 @@ import {
   GoldMlPredictionResult,
   TenYearEraPerformance,
   FeatureImportanceItem,
+  OpenAiVerificationResult,
+  OpenAiLiveTestResult,
 } from "../types";
 
 export const TEN_YEAR_ERA_STATS: TenYearEraPerformance[] = [
@@ -245,6 +247,7 @@ export async function runGoldMlPrediction(
 
   let reasoningAr = `نموذج Machine Learning المطور على 10 سنوات (245,680 شمعة 15 دقيقة) يعطي إشارة شراء قناصة بنسبة نجاح ${blendedWinProb}%. تطابق نموذج LSTM مع خوارزمية XGBoost لتزامن سحب سيولة القيعان مع كسر الدولار DXY وتشبع RSI في توقيت جلسة السيولة العالية.`;
   let aiEngine: GoldMlPredictionResult["aiEngine"] = "Ensemble ML Engine";
+  let openAiStatus: GoldMlPredictionResult["openAiStatus"] = undefined;
 
   try {
     const res = await fetch("/api/ml-model/predict", {
@@ -262,6 +265,9 @@ export async function runGoldMlPrediction(
       }
       if (data.aiEngine) {
         aiEngine = data.aiEngine;
+      }
+      if (data.openAiStatus) {
+        openAiStatus = data.openAiStatus;
       }
     }
   } catch {
@@ -321,6 +327,71 @@ export async function runGoldMlPrediction(
     },
     reasoningAr,
     aiEngine,
+    openAiStatus,
     timestamp: Date.now(),
   };
+}
+
+/**
+ * Perform a real server-side diagnostic ping to OpenAI API
+ * Validates key authenticity, model permissions, and billing availability
+ */
+export async function verifyOpenAiApiKey(apiKey: string): Promise<OpenAiVerificationResult> {
+  const trimmed = apiKey?.trim();
+  if (!trimmed) {
+    return {
+      valid: false,
+      status: "missing_key",
+      messageAr: "يرجى إدخال مفتاح OpenAI API يبدأ بـ sk-...",
+    };
+  }
+
+  try {
+    const res = await fetch("/api/openai/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: trimmed }),
+    });
+
+    const data: OpenAiVerificationResult = await res.json();
+    return data;
+  } catch (err: any) {
+    return {
+      valid: false,
+      status: "network_error",
+      messageAr: `تعذر الاتصال بخادم الفحص: ${err?.message || "خطأ غير معروف"}`,
+    };
+  }
+}
+
+/**
+ * Execute a live single-prompt analytical diagnostic test using the real OpenAI key
+ */
+export async function testOpenAiLiveAnalysis(
+  apiKey: string,
+  currentPrice?: number
+): Promise<OpenAiLiveTestResult> {
+  const trimmed = apiKey?.trim();
+  if (!trimmed) {
+    return {
+      success: false,
+      errorAr: "المفتاح غير متوفر لتشغيل الاختبار المباشر.",
+    };
+  }
+
+  try {
+    const res = await fetch("/api/openai/test-analysis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: trimmed, currentPrice }),
+    });
+
+    const data: OpenAiLiveTestResult = await res.json();
+    return data;
+  } catch (err: any) {
+    return {
+      success: false,
+      errorAr: `فشل إرسال اختبار التحليل المباشر: ${err?.message || "Network Error"}`,
+    };
+  }
 }

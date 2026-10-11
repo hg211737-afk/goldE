@@ -116,6 +116,54 @@ class SoundService {
       // ignore
     }
   }
+
+  /**
+   * Ascending dual-tone futuristic chime for successful verification
+   */
+  public playSuccessChime() {
+    if (!this.enabled) return;
+    this.playSonarPing(880);
+    setTimeout(() => {
+      this.playSonarPing(1320);
+    }, 120);
+  }
+
+  public playChime() {
+    this.playSuccessChime();
+  }
+
+  public playSonarPulse() {
+    this.playSonarPing(740);
+  }
+
+  /**
+   * Low warning tone for validation error
+   */
+  public playBeepError() {
+    if (!this.enabled) return;
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      osc.frequency.setValueAtTime(180, ctx.currentTime + 0.1);
+
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.28);
+    } catch {
+      // ignore
+    }
+  }
 }
 
 export const soundFx = new SoundService();

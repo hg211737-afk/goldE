@@ -45,6 +45,7 @@ import { generateMovementPrediction } from "../services/reversalPredictorService
 import { analyzeGoldWithClaude, calculateDualAiConsensus } from "../services/claudeService";
 import { generateInstitutionalConfluenceMatrix } from "../services/confluenceService";
 import { generateInstitutionalPendingLimits } from "../services/pendingLimitService";
+import { ZaiGoldAnalysisView } from "./ZaiGoldAnalysisView";
 
 interface AiAnalysisModalProps {
   isOpen: boolean;
@@ -52,7 +53,7 @@ interface AiAnalysisModalProps {
   analysis: AiAnalysisResult | null;
   claudeAnalysis?: ClaudeAnalysisResult | null;
   pendingLimitSetups?: InstitutionalPendingLimitSetup[];
-  initialTab?: "overview" | "pending_limits" | "confluence" | "claude" | "gemini" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation" | "ml_model" | "session_report";
+  initialTab?: "overview" | "zai" | "pending_limits" | "confluence" | "claude" | "gemini" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation" | "ml_model" | "session_report";
   isLoading: boolean;
   onRefresh: () => void;
   currentPrice: number;
@@ -81,7 +82,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   customClaudeApiKey,
   claudeModel = "Claude 3.7 Sonnet",
 }) => {
-  const [modalTab, setModalTab] = useState<"overview" | "pending_limits" | "confluence" | "claude" | "gemini" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation" | "ml_model" | "session_report">("overview");
+  const [modalTab, setModalTab] = useState<"overview" | "zai" | "pending_limits" | "confluence" | "claude" | "gemini" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation" | "ml_model" | "session_report">("overview");
   const [feedbackGiven, setFeedbackGiven] = useState<string | null>(null);
   const [localClaude, setLocalClaude] = useState<ClaudeAnalysisResult | null>(null);
   const [isClaudeLoading, setIsClaudeLoading] = useState<boolean>(false);
@@ -263,6 +264,21 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
             <span>نظرة عامة وتوافق الذكاءين</span>
             <span className="text-[10px] bg-slate-950/60 text-amber-300 px-1.5 py-0.2 rounded font-mono font-bold">
               {dualConsensus.agreementScore}% توافق
+            </span>
+          </button>
+
+          <button
+            onClick={() => setModalTab("zai")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              modalTab === "zai"
+                ? "bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 text-white font-black shadow-xs border border-purple-400/50"
+                : "text-purple-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <Brain className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
+            <span>الذكاء الاصطناعي z.ai</span>
+            <span className="text-[10px] bg-purple-500/20 text-purple-200 px-1.5 py-0.2 rounded font-mono font-bold">
+              قرار الدخول أو الانتظار
             </span>
           </button>
 
@@ -450,6 +466,14 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                 </p>
               </div>
             </div>
+          ) : modalTab === "zai" ? (
+            <ZaiGoldAnalysisView
+              currentPrice={currentPrice}
+              macroReport={macroReport}
+              onNavigateToView={() => {
+                onClose();
+              }}
+            />
           ) : modalTab === "ml_model" ? (
             <GoldMachineLearningView currentPrice={currentPrice} />
           ) : modalTab === "session_report" ? (
@@ -864,6 +888,33 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                       <span className="text-orange-400 font-bold hover:underline">تفاصيل كلاود ←</span>
                     </div>
                   </div>
+                </div>
+
+                {/* Third AI Engine: z.ai Quantum Decision Card */}
+                <div
+                  onClick={() => setModalTab("zai")}
+                  className="p-3 rounded-xl bg-gradient-to-r from-purple-950/40 via-indigo-950/40 to-slate-900 border border-purple-500/40 hover:border-purple-400 transition-all cursor-pointer flex items-center justify-between flex-wrap gap-2 group"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                      <Brain className="w-4 h-4 text-cyan-300 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-white">الذكاء الثالث: z.ai المؤسسي الكمي</span>
+                        <span className="text-[9px] bg-purple-400 text-slate-950 font-black px-1.5 py-0.2 rounded font-mono">
+                          قرار الدخول أو الانتظار
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 mt-0.5">
+                        يحلل جميع أدوات المنصة اللحظية: يقتنص الفرص القوية فوراً، أو يعطيك أمراً صريحاً بانتظار وصول السعر لمنطقة القوة المحددة بالملي.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-purple-300 font-bold group-hover:underline flex items-center gap-1 font-mono">
+                    <span>فتح تحليل z.ai</span>
+                    <span>←</span>
+                  </span>
                 </div>
 
                 {/* Synthesis Summary */}

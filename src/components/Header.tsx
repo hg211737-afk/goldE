@@ -6,18 +6,22 @@ import {
   Brain,
   ChartLine,
   Clock,
+  Coins,
   Compass,
   Cpu,
   Crosshair,
+  Droplet,
   Flame,
   Landmark,
   Layers,
+  Newspaper,
   Radio,
   RotateCw,
   SlidersHorizontal,
   Sparkles,
   TrendingDown,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 import { GoldQuote, Timeframe, ViewMode } from "../types";
 import { PWAInstallButton } from "./PWAInstallButton";
@@ -283,6 +287,66 @@ export const Header: React.FC<HeaderProps> = ({
           {/* View Mode Buttons */}
           <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 flex-wrap">
             <button
+              onClick={() => onViewModeChange("bitcoin")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "bitcoin"
+                  ? "bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.5)] font-black"
+                  : "text-amber-400 hover:text-amber-300 hover:bg-slate-800/60"
+              }`}
+              title="قسم مخصص لتحليل البتكوين، التحليل المستقبلي، الأخبار اللحظية، وتشخيص أسباب الهبوط وتوصيات القناص المؤسسية"
+            >
+              <Coins className="w-3.5 h-3.5 animate-pulse text-amber-300" />
+              <span>تحليل وأخبار البتكوين</span>
+              <span className="text-[9px] bg-rose-500 text-white px-1 py-0.2 rounded font-black">
+                أسباب الهبوط 📉
+              </span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("xpl")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "xpl"
+                  ? "bg-gradient-to-r from-cyan-500 via-teal-500 to-blue-500 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.5)] font-black"
+                  : "text-cyan-400 hover:text-cyan-300 hover:bg-slate-800/60"
+              }`}
+              title="قسم مخصص لتحليل زوج XPL/USDT وتدفق الأوامر وعمق السوق DOM"
+            >
+              <Zap className="w-3.5 h-3.5 animate-pulse text-cyan-300" />
+              <span>XPL/USDT ⚡</span>
+              <span className="text-[9px] bg-cyan-400 text-slate-950 px-1 py-0.2 rounded font-black">
+                تدفق أوامر
+              </span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("crude_oil")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "crude_oil"
+                  ? "bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-600 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.5)] font-black"
+                  : "text-amber-400 hover:text-amber-300 hover:bg-slate-800/60"
+              }`}
+              title="قسم مخصص لتحليل النفط الخام WTI/CL وتدفق الأوامر وأوبك+ وعقود الخيارات ومخزونات EIA بكامل مزايا الذهب"
+            >
+              <Droplet className="w-3.5 h-3.5 animate-pulse text-amber-300 fill-amber-300" />
+              <span>النفط الخام 🛢️</span>
+              <span className="text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black">
+                WTI / Brent
+              </span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("pre_news")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "pre_news"
+                  ? "bg-gradient-to-r from-red-500 via-amber-500 to-yellow-500 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.5)] font-black"
+                  : "text-amber-400 hover:text-amber-300 hover:bg-slate-800/60"
+              }`}
+              title="تحليل الأخبار الاستباقي قبل الصدور وتمركز السيولة (Pre-News Forecast & Macro Traps)"
+            >
+              <Newspaper className="w-3.5 h-3.5 animate-pulse text-amber-300" />
+              <span>التحليل الاستباقي للأخبار</span>
+              <span className="text-[9px] bg-red-500 text-white px-1 py-0.2 rounded font-black hidden sm:inline">
+                CPI/NFP
+              </span>
+            </button>
+            <button
               onClick={() => onViewModeChange("ml_model")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
                 viewMode === "ml_model"
@@ -310,6 +374,21 @@ export const Header: React.FC<HeaderProps> = ({
               <span>أداء الجلسات</span>
               <span className="text-[9px] bg-blue-500/20 text-blue-300 border border-blue-500/40 px-1 py-0.2 rounded font-bold hidden sm:inline">
                 تقرير
+              </span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("zai")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "zai"
+                  ? "bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] font-black"
+                  : "text-indigo-400 hover:text-indigo-300 hover:bg-slate-800/60"
+              }`}
+              title="الذكاء الاصطناعي z.ai لتحليل الذهب: اقتناص الصفقات القوية فوراً أو أمر الانتظار المنضبط"
+            >
+              <Brain className="w-3.5 h-3.5 animate-pulse text-cyan-300" />
+              <span>الذكاء z.ai</span>
+              <span className="text-[9px] bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 px-1 py-0.2 rounded font-black animate-pulse">
+                قرار ذكي
               </span>
             </button>
             <button

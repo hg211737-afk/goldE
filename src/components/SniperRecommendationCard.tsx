@@ -17,6 +17,10 @@ import {
   TrendingUp,
   Volume2,
   Zap,
+  Radio,
+  Coins,
+  Building2,
+  Activity,
 } from "lucide-react";
 import { SniperPrecisionSetup } from "../types";
 import { calculatePositionSize } from "../services/sniperPrecisionService";
@@ -188,6 +192,96 @@ export const SniperRecommendationCard: React.FC<SniperRecommendationCardProps> =
             <span className="text-emerald-400 font-bold flex items-center gap-1 font-mono">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               حق النقض (AI Veto): آمن تماماً
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Whale Radar Confluence Verification Block (Whale Alert + Glassnode + CME Futures) */}
+      {setup.whaleRadarConfluence && (
+        <div className="my-3 p-3.5 rounded-xl bg-gradient-to-r from-[#0b191c] via-[#0e1624] to-[#0c1220] border-2 border-emerald-500/40 shadow-xl space-y-2.5">
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-emerald-500/20">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <Radio className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <span className="font-black text-xs text-white block">
+                  رادار الحيتان (Whale Radar Confluence Matrix)
+                </span>
+                <span className="text-[10px] text-emerald-300 font-semibold block">
+                  {setup.whaleRadarConfluence.biasLabelAr}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 font-mono text-[11px]">
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
+                توافق الحيتان: {setup.whaleRadarConfluence.alignmentScore}%
+              </span>
+              <span className="bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-bold">
+                {setup.whaleRadarConfluence.totalWhaleVolumeUsd}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] leading-relaxed">
+            {/* Whale Alert Pillar */}
+            <div className="p-2.5 rounded-lg bg-slate-950/80 border border-amber-500/30 space-y-1">
+              <div className="flex items-center justify-between text-amber-300 font-bold">
+                <span className="flex items-center gap-1">
+                  <Activity className="w-3.5 h-3.5 text-amber-400" />
+                  ١. رادار Whale Alert:
+                </span>
+                <span className="text-[9px] bg-amber-500/20 text-amber-200 px-1.5 py-0.2 rounded font-mono">
+                  نقلة فورية
+                </span>
+              </div>
+              <p className="text-slate-300 text-[10.5px]">
+                {setup.whaleRadarConfluence.whaleAlertHeadlineAr}
+              </p>
+            </div>
+
+            {/* Glassnode Digital Gold Pillar */}
+            <div className="p-2.5 rounded-lg bg-slate-950/80 border border-cyan-500/30 space-y-1">
+              <div className="flex items-center justify-between text-cyan-300 font-bold">
+                <span className="flex items-center gap-1">
+                  <Coins className="w-3.5 h-3.5 text-cyan-400" />
+                  ٢. جلاس نود (PAXG / XAUT):
+                </span>
+                <span className="text-[9px] bg-cyan-500/20 text-cyan-200 px-1.5 py-0.2 rounded font-mono">
+                  سحب معروض
+                </span>
+              </div>
+              <p className="text-slate-300 text-[10.5px]">
+                {setup.whaleRadarConfluence.glassnodeFlowHeadlineAr}
+              </p>
+            </div>
+
+            {/* CME Futures Pillar */}
+            <div className="p-2.5 rounded-lg bg-slate-950/80 border border-emerald-500/30 space-y-1">
+              <div className="flex items-center justify-between text-emerald-300 font-bold">
+                <span className="flex items-center gap-1">
+                  <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+                  ٣. عقود CME الكبيرة GC:
+                </span>
+                <span className="text-[9px] bg-emerald-500/20 text-emerald-200 px-1.5 py-0.2 rounded font-mono">
+                  Block Trades
+                </span>
+              </div>
+              <p className="text-slate-300 text-[10.5px]">
+                {setup.whaleRadarConfluence.cmeFuturesHeadlineAr}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] bg-slate-950/90 px-3 py-1.5 rounded-lg border border-slate-800">
+            <span className="text-slate-300">
+              درع حماية الأوامر المخفية: <strong className="text-teal-300">{setup.whaleRadarConfluence.icebergShieldAr}</strong>
+            </span>
+            <span className="text-emerald-400 font-bold flex items-center gap-1 font-mono text-[10px]">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              جاهز للتنفيذ
             </span>
           </div>
         </div>
