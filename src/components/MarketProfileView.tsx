@@ -301,14 +301,14 @@ export const MarketProfileView: React.FC<MarketProfileViewProps> = ({
 
           {/* TPO Matrix Rows (Scrollable) */}
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5 font-['JetBrains_Mono']">
-            {levels.map((lvl) => {
+            {levels.map((lvl, idx) => {
               const isCurrent = Math.abs(currentPrice - lvl.price) < 0.25;
               const isVahLevel = Math.abs(lvl.price - vah) < 0.26;
               const isValLevel = Math.abs(lvl.price - val) < 0.26;
 
               return (
                 <div
-                  key={lvl.price}
+                  key={`${lvl.price}-${idx}`}
                   className={`flex items-center text-xs py-0.5 px-2 rounded transition-all ${
                     lvl.isPoc
                       ? "bg-amber-500/20 border border-amber-500/50 shadow-xs"

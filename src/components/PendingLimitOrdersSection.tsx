@@ -124,14 +124,14 @@ export const PendingLimitOrdersSection: React.FC<PendingLimitOrdersSectionProps>
 
       {/* Pending Orders Cards Grid */}
       <div className="grid grid-cols-1 gap-4">
-        {filteredSetups.map((setup) => {
+        {filteredSetups.map((setup, idx) => {
           const isBuy = setup.orderType === "BUY LIMIT";
           const isExpanded = expandedId === setup.id;
           const isCopied = copiedId === setup.id;
 
           return (
             <div
-              key={setup.id}
+              key={`${setup.id}-${idx}`}
               className={`rounded-2xl border-2 transition-all overflow-hidden shadow-xl ${
                 isBuy
                   ? "bg-gradient-to-br from-[#0c131d] to-[#080d15] border-emerald-500/40 hover:border-emerald-400"

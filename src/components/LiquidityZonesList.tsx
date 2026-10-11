@@ -388,7 +388,7 @@ export const LiquidityZonesList: React.FC<LiquidityZonesListProps> = ({
           </span>
         </div>
 
-        {filteredZones.map((zone) => {
+        {filteredZones.map((zone, idx) => {
           const isAbove = zone.priceBottom > currentPrice;
           const distPrice = Math.abs(currentPrice - (zone.priceTop + zone.priceBottom) / 2);
           const pips = (distPrice * 10).toFixed(0);
@@ -415,7 +415,7 @@ export const LiquidityZonesList: React.FC<LiquidityZonesListProps> = ({
 
           return (
             <div
-              key={zone.id}
+              key={`${zone.id}-${idx}`}
               className={`relative p-2.5 rounded-xl border transition-all ${
                 zone.status === "swept"
                   ? "bg-slate-900/40 border-slate-800/60 opacity-60"

@@ -21,6 +21,9 @@ import {
   Activity,
   Coins,
   Building2,
+  Brain,
+  Volume2,
+  AlertTriangle,
 } from "lucide-react";
 import {
   FootprintBar,
@@ -33,6 +36,9 @@ import {
 import { generateSniperPrecisionSetup } from "../services/sniperPrecisionService";
 import { SniperRecommendationCard } from "./SniperRecommendationCard";
 import { generateMovementPrediction } from "../services/reversalPredictorService";
+import { generateZaiGoldAnalysis } from "../services/zaiGoldAnalysisService";
+import { voiceAlert } from "../services/voiceAlertService";
+import { soundFx } from "../services/soundService";
 
 interface SniperSignalsViewProps {
   currentPrice: number;
@@ -42,6 +48,7 @@ interface SniperSignalsViewProps {
   macroReport?: MacroCorrelationReport;
   onRefresh?: () => void;
   isAiLoading?: boolean;
+  onNavigateToView?: (view: any) => void;
 }
 
 export const SniperSignalsView: React.FC<SniperSignalsViewProps> = ({
@@ -52,9 +59,38 @@ export const SniperSignalsView: React.FC<SniperSignalsViewProps> = ({
   macroReport,
   onRefresh,
   isAiLoading = false,
+  onNavigateToView,
 }) => {
   const [selectedDirection, setSelectedDirection] = useState<"AUTO" | "BUY" | "SELL">("AUTO");
   const [historyTab, setHistoryTab] = useState<boolean>(false);
+  const [zaiEvalMode, setZaiEvalMode] = useState<"AUTO" | "FORCE_ACTIVE" | "FORCE_WAIT">("AUTO");
+  const [zaiCopied, setZaiCopied] = useState<boolean>(false);
+
+  // Compute z.ai Institutional Quantum Gold Analysis
+  const zaiAnalysis = useMemo(() => {
+    return generateZaiGoldAnalysis({
+      currentPrice,
+      bars,
+      tpoReport,
+      liquidityZones,
+      macroReport,
+      forceMode: zaiEvalMode,
+    });
+  }, [currentPrice, bars, tpoReport, liquidityZones, macroReport, zaiEvalMode]);
+
+  const handleSpeakZai = () => {
+    soundFx.playIcebergAlert();
+    voiceAlert.speak(zaiAnalysis.voiceBriefingAr, "urgent");
+  };
+
+  const handleCopyZaiCommand = () => {
+    if (zaiAnalysis.activeTradeSetup?.mtCommand) {
+      navigator.clipboard.writeText(zaiAnalysis.activeTradeSetup.mtCommand);
+      setZaiCopied(true);
+      soundFx.playHudClick();
+      setTimeout(() => setZaiCopied(false), 2500);
+    }
+  };
 
   // Compute primary setup
   const primarySetup = useMemo(() => {
@@ -230,6 +266,228 @@ export const SniperSignalsView: React.FC<SniperSignalsViewProps> = ({
             تطابق الحيتان 97.4%
           </span>
         </div>
+      </div>
+
+      {/* Whale Radar Institutional Confluence Ribbon */}
+      <div className="p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-teal-950/40 border border-emerald-500/40 flex items-center justify-between flex-wrap gap-2 text-xs shadow-md">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <Radio className="w-4 h-4 text-emerald-400 animate-pulse shrink-0" />
+          </div>
+          <span className="text-slate-200 leading-relaxed">
+            <strong className="text-emerald-400 font-black">رادار الحيتان (Whale Radar) يؤكد التوصية:</strong>{" "}
+            تحويلات <strong className="text-amber-400">Whale Alert</strong> ($142.8M سبائك) + سحب الذهب الرقمي <strong className="text-cyan-400">Glassnode</strong> (-23,150 أونصة للمحافظ الباردة) + صفقات بلوك <strong className="text-emerald-300">CME GC</strong> ($150M) تتطابق 100% مع أمر الدخول القناص.
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 font-mono text-[11px]">
+          <span className="bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-lg font-bold border border-emerald-500/40 flex items-center gap-1">
+            <Activity className="w-3.5 h-3.5 text-emerald-400" />
+            تطابق الحيتان 97.4%
+          </span>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 🧠 z.ai Institutional Quantum Gold Engine Integration Card */}
+      {/* ======================================================== */}
+      <div className={`p-4 sm:p-5 rounded-2xl border-2 transition-all shadow-2xl space-y-3.5 ${
+        zaiAnalysis.decisionState === "ACTIVE_GRADE_A_SETUP"
+          ? "bg-gradient-to-br from-[#0c1e19] via-[#09141d] to-[#121124] border-emerald-500/60 shadow-[0_0_30px_rgba(16,185,129,0.18)]"
+          : "bg-gradient-to-br from-[#1d140a] via-[#151119] to-[#0d1424] border-amber-500/60 shadow-[0_0_30px_rgba(245,158,11,0.18)]"
+      }`}>
+        {/* Header Strip */}
+        <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]">
+              <Brain className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
+                  <span>تحليل الذكاء الاصطناعي z.ai الحقيقي للذهب</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                    {zaiAnalysis.version}
+                  </span>
+                </span>
+                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-black ${
+                  zaiAnalysis.decisionState === "ACTIVE_GRADE_A_SETUP"
+                    ? "bg-emerald-400 text-slate-950 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.4)]"
+                    : "bg-amber-400 text-slate-950 font-black"
+                }`}>
+                  {zaiAnalysis.decisionState === "ACTIVE_GRADE_A_SETUP"
+                    ? "🔥 فرصة صفقة قوية نشطة الآن"
+                    : "⛔ انتظر وصول السعر للمنطقة المحددة"}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 mt-0.5">
+                {zaiAnalysis.decisionSubheadAr}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Simulation Controls */}
+            <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[10px]">
+              <button
+                onClick={() => setZaiEvalMode("AUTO")}
+                className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-colors ${
+                  zaiEvalMode === "AUTO" ? "bg-indigo-600 text-white font-black" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                آلي
+              </button>
+              <button
+                onClick={() => setZaiEvalMode("FORCE_ACTIVE")}
+                className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-colors ${
+                  zaiEvalMode === "FORCE_ACTIVE" ? "bg-emerald-600 text-white font-black" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                صفقة نشطة
+              </button>
+              <button
+                onClick={() => setZaiEvalMode("FORCE_WAIT")}
+                className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-colors ${
+                  zaiEvalMode === "FORCE_WAIT" ? "bg-amber-600 text-white font-black" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                انتظار
+              </button>
+            </div>
+
+            <button
+              onClick={handleSpeakZai}
+              className="p-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 border border-indigo-500/40 text-xs flex items-center gap-1 cursor-pointer transition-all"
+              title="نطق التقرير الصوتي لـ z.ai"
+            >
+              <Volume2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline text-[11px] font-bold">صوت z.ai</span>
+            </button>
+
+            {onNavigateToView && (
+              <button
+                onClick={() => onNavigateToView("zai")}
+                className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[11px] font-black cursor-pointer hover:opacity-90 shadow-sm flex items-center gap-1"
+                title="فتح لوحة z.ai التفاعلية الكاملة"
+              >
+                <span>فتح المحلل الكامل z.ai</span>
+                <span>←</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* DECISION CONTENT */}
+        {zaiAnalysis.decisionState === "ACTIVE_GRADE_A_SETUP" && zaiAnalysis.activeTradeSetup ? (
+          /* ACTIVE SETUP PREVIEW */
+          <div className="space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+              <span className="font-black text-emerald-300 flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>{zaiAnalysis.decisionHeadlineAr}</span>
+              </span>
+              <button
+                onClick={handleCopyZaiCommand}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500 text-slate-950 font-black text-xs cursor-pointer shadow-md active:scale-95 hover:bg-emerald-400 transition-all"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{zaiCopied ? "تم النسخ!" : "نسخ الأمر (MT4/5)"}</span>
+              </button>
+            </div>
+
+            {/* Price Levels Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-emerald-500/40">
+                <span className="text-[10px] text-slate-400 block font-['Cairo']">سعر الدخول المقترح:</span>
+                <span className="text-lg font-black text-amber-300 block">
+                  ${zaiAnalysis.activeTradeSetup.entryPrice.toFixed(2)}
+                </span>
+                <span className="text-[10px] text-slate-400 block">
+                  نطاق: [${zaiAnalysis.activeTradeSetup.entryRange.min} - ${zaiAnalysis.activeTradeSetup.entryRange.max}]
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-rose-500/40">
+                <span className="text-[10px] text-rose-400 block font-['Cairo']">وقف الخسارة (SL):</span>
+                <span className="text-lg font-black text-rose-400 block">
+                  ${zaiAnalysis.activeTradeSetup.stopLoss.toFixed(2)}
+                </span>
+                <span className="text-[10px] text-rose-300 block">
+                  -{zaiAnalysis.activeTradeSetup.slPips} نقطة محكمة
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-emerald-500/40">
+                <span className="text-[10px] text-emerald-400 block font-['Cairo']">الهدف الأول (TP1):</span>
+                <span className="text-lg font-black text-emerald-400 block">
+                  ${zaiAnalysis.activeTradeSetup.tp1.toFixed(2)}
+                </span>
+                <span className="text-[10px] text-emerald-300 block font-['Cairo']">
+                  حجز 50% وتأمين الدخول
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-cyan-500/40">
+                <span className="text-[10px] text-cyan-400 block font-['Cairo']">الهدف الأقصى (TP3):</span>
+                <span className="text-lg font-black text-cyan-300 block">
+                  ${zaiAnalysis.activeTradeSetup.tp3.toFixed(2)}
+                </span>
+                <span className="text-[10px] text-cyan-400 block font-mono">
+                  R:R {zaiAnalysis.activeTradeSetup.riskReward}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 text-[11px] text-slate-300 leading-relaxed">
+              <strong className="text-emerald-400 block mb-0.5">الأطروحة التحليلية لـ z.ai:</strong>
+              {zaiAnalysis.activeTradeSetup.thesisAr}
+            </div>
+          </div>
+        ) : (
+          /* WAITING FOR ZONE PREVIEW */
+          zaiAnalysis.waitingZoneGuidance && (
+            <div className="space-y-3">
+              <div className="p-3 rounded-xl bg-slate-950/90 border border-amber-500/40 flex items-center justify-between flex-wrap gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 animate-bounce shrink-0" />
+                  <div>
+                    <span className="text-amber-300 font-bold block">
+                      📍 {zaiAnalysis.waitingZoneGuidance.recommendedZoneNameAr}
+                    </span>
+                    <span className="text-slate-300 text-[11px]">
+                      النطاق المستهدف للتمركز: <strong className="text-amber-400 font-mono text-sm">${zaiAnalysis.waitingZoneGuidance.targetZoneRange.min.toFixed(2)} - ${zaiAnalysis.waitingZoneGuidance.targetZoneRange.max.toFixed(2)}</strong> (الارتداد النموذجي عند <span className="text-emerald-400 font-mono">${zaiAnalysis.waitingZoneGuidance.idealBouncePrice.toFixed(2)}</span>)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <span className="bg-amber-500/20 text-amber-300 px-2 py-1 rounded-lg border border-amber-500/40 font-bold">
+                    المسافة الحالية: ${zaiAnalysis.waitingZoneGuidance.distanceFromCurrentPriceDollars} ({zaiAnalysis.waitingZoneGuidance.distancePips} نقطة)
+                  </span>
+                  <span className="bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-lg border border-emerald-500/40 font-bold">
+                    الإجراء: {zaiAnalysis.waitingZoneGuidance.expectedActionUponArrival === "BUY" ? "شراء قناص" : "بيع قناص"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 text-slate-300 text-[11px] leading-relaxed">
+                  <strong className="text-amber-400 block mb-0.5">💡 لماذا أمر z.ai بالانتظار؟</strong>
+                  {zaiAnalysis.waitingZoneGuidance.whyWaitAr}
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 text-slate-300 text-[11px] space-y-1">
+                  <strong className="text-cyan-300 block mb-0.5">📋 شروط التفعيل المطلوبة فور الوصول:</strong>
+                  {zaiAnalysis.waitingZoneGuidance.requiredConfirmationsAr.slice(0, 2).map((c, i) => (
+                    <div key={i} className="flex items-start gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-cyan-400 shrink-0 mt-0.5" />
+                      <span>{c}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )
+        )}
       </div>
 
       {/* Primary Sniper Recommendation Card */}

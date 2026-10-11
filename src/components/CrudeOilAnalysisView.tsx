@@ -467,7 +467,7 @@ ${recommendation.catalystsAr.map((c) => `- ${c}`).join("\n")}
               <div className="flex items-center gap-2 overflow-x-auto py-1">
                 {footprintBars.map((bar, idx) => (
                   <button
-                    key={bar.timestamp}
+                    key={`${bar.timestamp}-${idx}`}
                     onClick={() => setSelectedFootprintIndex(idx)}
                     className={`p-2 rounded-lg border text-left min-w-[120px] transition-all cursor-pointer ${
                       selectedFootprintIndex === idx

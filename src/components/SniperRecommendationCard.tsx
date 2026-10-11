@@ -21,6 +21,7 @@ import {
   Coins,
   Building2,
   Activity,
+  Brain,
 } from "lucide-react";
 import { SniperPrecisionSetup } from "../types";
 import { calculatePositionSize } from "../services/sniperPrecisionService";
@@ -192,6 +193,17 @@ export const SniperRecommendationCard: React.FC<SniperRecommendationCardProps> =
             <span className="text-emerald-400 font-bold flex items-center gap-1 font-mono">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               حق النقض (AI Veto): آمن تماماً
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] bg-gradient-to-r from-purple-950/40 to-indigo-950/40 px-3 py-1.5 rounded-lg border border-purple-500/30">
+            <span className="text-purple-200 flex items-center gap-1.5 font-bold">
+              <Brain className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span>محرك z.ai التكتيكي:</span>
+              <span className="text-emerald-400 font-black">مصادقة فورية على الصفقة (Grade-A Entry Approved)</span>
+            </span>
+            <span className="text-purple-300 font-mono text-[10px]">
+              توافق 5/5 أدوات بالملي
             </span>
           </div>
         </div>

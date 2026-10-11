@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Activity,
+  Brain,
   Clock,
   Droplet,
   Flame,
@@ -35,6 +36,7 @@ import {
   getMacroCorrelationData,
   generateDualSmartLevels,
 } from "./services/correlationService";
+import { generateTpoMarketProfile } from "./services/marketProfileService";
 import { Header } from "./components/Header";
 import { MarketSessionWidget } from "./components/MarketSessionWidget";
 import { FootprintChart } from "./components/FootprintChart";
@@ -218,6 +220,10 @@ export function App() {
   const macroReport = useMemo(() => {
     return getMacroCorrelationData(quote.price);
   }, [quote.price]);
+
+  const tpoReport = useMemo(() => {
+    return generateTpoMarketProfile(quote.price, footprintBars);
+  }, [quote.price, footprintBars]);
 
   const pendingLimitSetups = useMemo(() => {
     return generateInstitutionalPendingLimits({
@@ -693,9 +699,12 @@ export function App() {
             <SniperSignalsView
               currentPrice={quote.price}
               bars={footprintBars}
+              tpoReport={tpoReport}
               liquidityZones={liquidityZones}
+              macroReport={macroReport}
               onRefresh={handleTriggerAiAnalysis}
               isAiLoading={isAiLoading}
+              onNavigateToView={(v) => setViewMode(v)}
             />
           )}
           {viewMode === "predictor" && (
