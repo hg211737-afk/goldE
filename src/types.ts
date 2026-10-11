@@ -149,7 +149,6 @@ export type ViewMode =
   | "pre_news"
   | "bitcoin"
   | "xpl"
-  | "crude_oil"
   | "zai";
 
 export interface TpoLevelData {

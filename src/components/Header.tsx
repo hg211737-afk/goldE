@@ -317,21 +317,6 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </button>
             <button
-              onClick={() => onViewModeChange("crude_oil")}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
-                viewMode === "crude_oil"
-                  ? "bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-600 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.5)] font-black"
-                  : "text-amber-400 hover:text-amber-300 hover:bg-slate-800/60"
-              }`}
-              title="قسم مخصص لتحليل النفط الخام WTI/CL وتدفق الأوامر وأوبك+ وعقود الخيارات ومخزونات EIA بكامل مزايا الذهب"
-            >
-              <Droplet className="w-3.5 h-3.5 animate-pulse text-amber-300 fill-amber-300" />
-              <span>النفط الخام 🛢️</span>
-              <span className="text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black">
-                WTI / Brent
-              </span>
-            </button>
-            <button
               onClick={() => onViewModeChange("pre_news")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
                 viewMode === "pre_news"

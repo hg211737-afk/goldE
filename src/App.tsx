@@ -3,7 +3,6 @@ import {
   Activity,
   Brain,
   Clock,
-  Droplet,
   Flame,
   Globe2,
   Layers,
@@ -66,7 +65,6 @@ import { SessionPerformanceReport } from "./components/SessionPerformanceReport"
 import { PreNewsPredictiveView } from "./components/PreNewsPredictiveView";
 import { BitcoinAnalysisView } from "./components/BitcoinAnalysisView";
 import { XplAnalysisView } from "./components/XplAnalysisView";
-import { CrudeOilAnalysisView } from "./components/CrudeOilAnalysisView";
 import { ZaiGoldAnalysisView } from "./components/ZaiGoldAnalysisView";
 
 export function App() {
@@ -602,29 +600,6 @@ export function App() {
         </div>
 
         <div 
-          onClick={() => setViewMode(viewMode === "crude_oil" ? "footprint" : "crude_oil")}
-          className={`sm:w-72 bg-gradient-to-r from-[#17120a] via-[#1f160a] to-[#121927] border ${
-            viewMode === "crude_oil" ? "border-amber-400 ring-1 ring-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)]" : "border-amber-600/40 hover:border-amber-400"
-          } rounded-xl px-3 py-1.5 flex items-center justify-between gap-2 text-xs transition-all cursor-pointer shadow-sm group`}
-          title="انقر لفتح قسم تحليل وتدفق أوامر النفط الخام WTI/CL بجميع مزايا الذهب"
-        >
-          <div className="flex items-center gap-2 overflow-hidden">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
-            <span className="text-amber-300 font-black shrink-0 flex items-center gap-1 font-mono">
-              <Droplet className="w-3.5 h-3.5 text-amber-400" />
-              <span>النفط WTI:</span>
-            </span>
-            <span className="text-slate-200 truncate text-[11px] font-semibold">
-              {viewMode === "crude_oil" ? "القسم نشط الآن" : "تدفق الأوامر وأوبك+"}
-            </span>
-          </div>
-          <span className="text-amber-400 group-hover:text-amber-300 font-bold shrink-0 flex items-center gap-1 text-[11px]">
-            <span>{viewMode === "crude_oil" ? "للذهب" : "فتح النفط"}</span>
-            <span>←</span>
-          </span>
-        </div>
-
-        <div 
           onClick={() => setViewMode(viewMode === "zai" ? "footprint" : "zai")}
           className={`sm:w-80 bg-gradient-to-r from-[#170e28] via-[#10142b] to-[#1a1236] border ${
             viewMode === "zai" ? "border-purple-400 ring-1 ring-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]" : "border-indigo-500/40 hover:border-purple-400"
@@ -648,7 +623,7 @@ export function App() {
         </div>
       </div>
 
-      {viewMode !== "bitcoin" && viewMode !== "xpl" && viewMode !== "crude_oil" && viewMode !== "zai" && (
+      {viewMode !== "bitcoin" && viewMode !== "xpl" && viewMode !== "zai" && (
         <div className="px-1.5 sm:px-3 pt-1">
           <GoldSqueezeGauge currentPrice={quote.price} />
         </div>
@@ -761,17 +736,10 @@ export function App() {
               onNavigateToBitcoin={() => setViewMode("bitcoin")}
             />
           )}
-          {viewMode === "crude_oil" && (
-            <CrudeOilAnalysisView
-              onBackToGold={() => setViewMode("footprint")}
-              onNavigateToBitcoin={() => setViewMode("bitcoin")}
-              onNavigateToXpl={() => setViewMode("xpl")}
-            />
-          )}
           {viewMode === "tradingview" && <TradingViewWidget timeframe={timeframe} />}
         </main>
 
-        {viewMode !== "bitcoin" && viewMode !== "xpl" && viewMode !== "crude_oil" && (
+        {viewMode !== "bitcoin" && viewMode !== "xpl" && (
           <aside
             className={`w-full lg:w-80 xl:w-96 flex flex-col shrink-0 bg-[#111622] rounded-xl border border-slate-800/80 overflow-hidden min-h-[460px] lg:min-h-0 ${
               mobileTab === "chart" ? "hidden lg:flex lg:h-full" : "flex flex-1 h-full"
