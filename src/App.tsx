@@ -3,6 +3,7 @@ import {
   Activity,
   Brain,
   Clock,
+  Cpu,
   Flame,
   Globe2,
   Layers,
@@ -63,9 +64,19 @@ import { GoldSqueezeGauge } from "./components/GoldSqueezeGauge";
 import { GoldMachineLearningView } from "./components/GoldMachineLearningView";
 import { SessionPerformanceReport } from "./components/SessionPerformanceReport";
 import { PreNewsPredictiveView } from "./components/PreNewsPredictiveView";
-import { BitcoinAnalysisView } from "./components/BitcoinAnalysisView";
-import { XplAnalysisView } from "./components/XplAnalysisView";
 import { ZaiGoldAnalysisView } from "./components/ZaiGoldAnalysisView";
+import { AnalyticalMemoryBacktestView } from "./components/AnalyticalMemoryBacktestView";
+import { GannCyclesView } from "./components/GannCyclesView";
+import { PreSessionRoadmapView } from "./components/PreSessionRoadmapView";
+import { Argon4AnalysisView } from "./components/Argon4AnalysisView";
+import { soundFx } from "./services/soundService";
+
+const BitcoinAnalysisView = React.lazy(() =>
+  import("./components/BitcoinAnalysisView").then((m) => ({ default: m.BitcoinAnalysisView }))
+);
+const XplAnalysisView = React.lazy(() =>
+  import("./components/XplAnalysisView").then((m) => ({ default: m.XplAnalysisView }))
+);
 
 export function App() {
   const [quote, setQuote] = useState<GoldQuote>({
@@ -92,15 +103,17 @@ export function App() {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("liquidity");
   const [settings, setSettings] = useState<AppSettings>(() => {
     let savedKey = "";
-    let savedModel = "gemini-2.5-flash";
+    let savedModel = "gemini-3.8-flash";
     let savedClaudeKey = "";
-    let savedClaudeModel = "Claude 3.7 Sonnet";
+    let savedClaudeModel = "Claude Opus 5.5";
     try {
       if (typeof window !== "undefined") {
         savedKey = localStorage.getItem("gold_orderflow_gemini_key") || "";
-        savedModel = localStorage.getItem("gold_orderflow_ai_model") || "gemini-2.5-flash";
+        const storedModel = localStorage.getItem("gold_orderflow_ai_model");
+        savedModel = storedModel && !storedModel.includes("2.5") ? storedModel : "gemini-3.8-flash";
         savedClaudeKey = localStorage.getItem("gold_orderflow_claude_key") || "";
-        savedClaudeModel = localStorage.getItem("gold_orderflow_claude_model") || "Claude 3.7 Sonnet";
+        const storedClaude = localStorage.getItem("gold_orderflow_claude_model");
+        savedClaudeModel = storedClaude && (storedClaude.includes("Opus") || storedClaude.includes("5.5")) ? storedClaude : "Claude Opus 5.5";
       }
     } catch {
       // ignore
@@ -483,6 +496,21 @@ export function App() {
     }
   };
 
+  const handleRefreshAllTools = useCallback(async () => {
+    soundFx.playHudClick();
+    try {
+      await pollMarketData();
+      setFeedKey((k) => k + 1);
+      soundFx.playSuccessChime();
+      setAlertBanner("⚡ تم تحديث ومزامنة بيانات ومحركات جميع أدوات المنصة الـ 22 بنجاح!");
+      setTimeout(() => {
+        setAlertBanner(null);
+      }, 4000);
+    } catch (err) {
+      console.error("Failed to refresh tools:", err);
+    }
+  }, [pollMarketData]);
+
   return (
     <div className="flex flex-col min-h-[100dvh] h-auto lg:h-[100dvh] w-full overflow-x-hidden overflow-y-auto lg:overflow-hidden bg-[#0a0d14] text-slate-100 font-['Cairo'] select-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <OfflineNotice />
@@ -509,10 +537,7 @@ export function App() {
         activeLiquidityCount={liquidityZones.filter((z) => z.status === "untested").length}
         connectionStatus={connectionStatus}
         hasCustomApiKey={Boolean(settings.customGeminiApiKey && settings.customGeminiApiKey.trim())}
-        onRefresh={() => {
-          pollMarketData();
-          setFeedKey((k) => k + 1);
-        }}
+        onRefresh={handleRefreshAllTools}
       />
       
       <MarketSessionWidget
@@ -621,9 +646,32 @@ export function App() {
             <span>←</span>
           </span>
         </div>
+
+        <div 
+          onClick={() => setViewMode(viewMode === "argon4" ? "footprint" : "argon4")}
+          className={`sm:w-84 bg-gradient-to-r from-[#0b1728] via-[#0e1f38] to-[#181135] border ${
+            viewMode === "argon4" ? "border-cyan-400 ring-1 ring-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]" : "border-cyan-500/40 hover:border-cyan-300"
+          } rounded-xl px-3 py-1.5 flex items-center justify-between gap-2 text-xs transition-all cursor-pointer shadow-sm group`}
+          title="انقر لفتح العقل التحليلي المركزي ARGON4 PRO: مصفوفة الـ 8 محركات، التدقيق المؤسسي، وتدفق الأوامر"
+        >
+          <div className="flex items-center gap-2 overflow-hidden">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+            <span className="text-cyan-300 font-black shrink-0 flex items-center gap-1 font-mono text-[11px]">
+              <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+              <span>ARGON4 PRO:</span>
+            </span>
+            <span className="text-slate-200 truncate text-[11px] font-semibold">
+              {viewMode === "argon4" ? "العقل التحليلي نشط" : "الـ 8 محركات & تدفق الأوامر"}
+            </span>
+          </div>
+          <span className="text-cyan-400 group-hover:text-cyan-200 font-bold shrink-0 flex items-center gap-1 text-[11px]">
+            <span>{viewMode === "argon4" ? "للذهب" : "فتح PRO"}</span>
+            <span>←</span>
+          </span>
+        </div>
       </div>
 
-      {viewMode !== "bitcoin" && viewMode !== "xpl" && viewMode !== "zai" && (
+      {viewMode !== "bitcoin" && viewMode !== "xpl" && viewMode !== "zai" && viewMode !== "argon4" && (
         <div className="px-1.5 sm:px-3 pt-1">
           <GoldSqueezeGauge currentPrice={quote.price} />
         </div>
@@ -662,10 +710,10 @@ export function App() {
             <CvdAnalysisView bars={footprintBars} currentPrice={quote.price} />
           )}
           {viewMode === "optionflow" && (
-            <OptionFlowView currentPrice={quote.price} />
+            <OptionFlowView currentPrice={quote.price} onRefresh={handleRefreshAllTools} />
           )}
           {viewMode === "futures" && (
-            <FuturesAnalysisView currentPrice={quote.price} />
+            <FuturesAnalysisView currentPrice={quote.price} onRefresh={handleRefreshAllTools} />
           )}
           {viewMode === "marketprofile" && (
             <MarketProfileView currentPrice={quote.price} bars={footprintBars} />
@@ -703,13 +751,13 @@ export function App() {
             />
           )}
           {viewMode === "radar" && (
-            <WhaleSonarRadarView currentPrice={quote.price} />
+            <WhaleSonarRadarView currentPrice={quote.price} onRefresh={handleRefreshAllTools} />
           )}
           {viewMode === "montecarlo" && (
-            <MonteCarloSimulatorView currentPrice={quote.price} />
+            <MonteCarloSimulatorView currentPrice={quote.price} onRefresh={handleRefreshAllTools} />
           )}
           {viewMode === "warroom" && (
-            <CentralBankWarRoomView currentPrice={quote.price} />
+            <CentralBankWarRoomView currentPrice={quote.price} onRefresh={handleRefreshAllTools} />
           )}
           {viewMode === "ml_model" && (
             <GoldMachineLearningView currentPrice={quote.price} bars={footprintBars} />
@@ -719,27 +767,71 @@ export function App() {
               currentPrice={quote.price}
               bars={footprintBars}
               liquidityZones={liquidityZones}
+              onRefresh={handleRefreshAllTools}
             />
           )}
           {viewMode === "pre_news" && (
             <PreNewsPredictiveView
               currentPrice={quote.price}
               onOpenSettings={() => setIsSettingsModalOpen(true)}
+              onRefresh={handleRefreshAllTools}
             />
           )}
           {viewMode === "bitcoin" && (
-            <BitcoinAnalysisView onBackToGold={() => setViewMode("footprint")} />
+            <React.Suspense fallback={<div className="p-8 text-center text-amber-400 font-mono text-sm">جاري تحميل منظومة البيتكوين...</div>}>
+              <BitcoinAnalysisView onBackToGold={() => setViewMode("footprint")} />
+            </React.Suspense>
           )}
           {viewMode === "xpl" && (
-            <XplAnalysisView
-              onBackToGold={() => setViewMode("footprint")}
-              onNavigateToBitcoin={() => setViewMode("bitcoin")}
+            <React.Suspense fallback={<div className="p-8 text-center text-cyan-400 font-mono text-sm">جاري تحميل منظومة XPL...</div>}>
+              <XplAnalysisView
+                onBackToGold={() => setViewMode("footprint")}
+                onNavigateToBitcoin={() => setViewMode("bitcoin")}
+              />
+            </React.Suspense>
+          )}
+          {viewMode === "analytical_memory" && (
+            <AnalyticalMemoryBacktestView
+              currentPrice={quote.price}
+              onNavigateToView={(v) => setViewMode(v)}
+              onRefresh={handleRefreshAllTools}
+            />
+          )}
+          {viewMode === "gann_cycles" && (
+            <GannCyclesView
+              currentPrice={quote.price}
+              onNavigateToView={(v) => setViewMode(v)}
+              onRefresh={handleRefreshAllTools}
+            />
+          )}
+          {viewMode === "pre_session_roadmap" && (
+            <PreSessionRoadmapView
+              currentPrice={quote.price}
+              onNavigateToView={(v) => setViewMode(v)}
+              onRefresh={handleRefreshAllTools}
+            />
+          )}
+          {viewMode === "argon4" && (
+            <Argon4AnalysisView
+              currentPrice={quote.price}
+              footprintBars={footprintBars}
+              bars={footprintBars}
+              tpoReport={tpoReport}
+              liquidityZones={liquidityZones}
+              macroReport={macroReport}
+              onNavigateToView={(v) => setViewMode(v)}
+              onRefresh={handleRefreshAllTools}
             />
           )}
           {viewMode === "tradingview" && <TradingViewWidget timeframe={timeframe} />}
         </main>
 
-        {viewMode !== "bitcoin" && viewMode !== "xpl" && (
+        {viewMode !== "bitcoin" &&
+          viewMode !== "xpl" &&
+          viewMode !== "analytical_memory" &&
+          viewMode !== "gann_cycles" &&
+          viewMode !== "pre_session_roadmap" &&
+          viewMode !== "argon4" && (
           <aside
             className={`w-full lg:w-80 xl:w-96 flex flex-col shrink-0 bg-[#111622] rounded-xl border border-slate-800/80 overflow-hidden min-h-[460px] lg:min-h-0 ${
               mobileTab === "chart" ? "hidden lg:flex lg:h-full" : "flex flex-1 h-full"
@@ -962,7 +1054,7 @@ export function App() {
           setIsAiModalOpen(false);
           setIsSettingsModalOpen(true);
         }}
-        activeModel={settings.aiModel || "gemini-2.5-flash"}
+        activeModel={settings.aiModel || "gemini-3.8-flash"}
         hasCustomKey={Boolean(settings.customGeminiApiKey && settings.customGeminiApiKey.trim())}
         customClaudeApiKey={settings.customClaudeApiKey}
         claudeModel={settings.claudeModel || "Claude 3.7 Sonnet"}

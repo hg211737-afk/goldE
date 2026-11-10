@@ -149,7 +149,11 @@ export type ViewMode =
   | "pre_news"
   | "bitcoin"
   | "xpl"
-  | "zai";
+  | "zai"
+  | "analytical_memory"
+  | "gann_cycles"
+  | "pre_session_roadmap"
+  | "argon4";
 
 export interface TpoLevelData {
   price: number;
@@ -299,6 +303,8 @@ export interface AppSettings {
   aiModel?: string;
   customClaudeApiKey?: string;
   claudeModel?: string;
+  customOpenAIApiKey?: string;
+  openAIModel?: string;
   goldDataProvider?: "oanda_spot" | "binance_spot" | "binance_futures" | "tradingview";
   streamSpeed?: "realtime" | "fast" | "normal";
 }
@@ -809,8 +815,14 @@ export interface InstitutionalPendingLimitSetup {
 }
 
 // ==============================================================================
-// 3. 10-Year 15M Gold Machine Learning Types (LSTM + XGBoost + OpenAI Engine)
+// 3. 10-Year 15M Gold Machine Learning Types (State-of-the-Art Quant Ensemble)
 // ==============================================================================
+
+export type MlMarketRegime =
+  | "TREND_EXPANSION"
+  | "HIGH_VOL_MACRO_SHOCK"
+  | "LOW_VOL_MEAN_REVERSION"
+  | "LIQUIDITY_VACUUM_TOXIC";
 
 export interface GoldMlInputs {
   currentPrice: number;
@@ -820,17 +832,29 @@ export interface GoldMlInputs {
     sweepType: "SSL_sweep" | "BSL_sweep" | "none";
     chochDetected: boolean;
     bosDetected: boolean;
+    fvgPriceZone?: string;
   };
   dxy: {
     price: number;
     change15m: number;
     correlationBeta: number;
     trend: "bearish" | "bullish" | "neutral";
+    yield10yRate?: number;
+    yield10ySpreadChange?: number;
   };
   rsi: {
     value: number;
     divergence: "bullish_regular" | "bearish_regular" | "bullish_hidden" | "bearish_hidden" | "none";
     slope: "rising" | "falling" | "flat";
+    stochRsiK?: number;
+    stochRsiD?: number;
+  };
+  orderFlow: {
+    vpinToxicityRatio: number; // 0.0 - 1.0 (Volume-Synchronized Probability of Toxicity)
+    cvdDeltaPips: number;
+    icebergAbsorptionState: "BUY_ABSORPTION" | "SELL_ABSORPTION" | "NEUTRAL";
+    imbalanceRatio: number; // e.g. 3.4 : 1
+    depthLiquidityGradient: number; // % skew towards bid or ask
   };
   news: {
     redFolderUpcoming: boolean;
@@ -838,11 +862,13 @@ export interface GoldMlInputs {
     minutesToEvent: number;
     sentimentScore: number;
     geopoliticalRisk: number;
+    cpiDeviationPips?: number;
   };
   session: {
     currentSession: "London Open" | "NY AM Silver Bullet" | "NY PM" | "Asia" | "Off-Session";
     killzoneActive: boolean;
     timeUtc: string;
+    volumeMultiplier?: number;
   };
 }
 
@@ -852,6 +878,8 @@ export interface FeatureImportanceItem {
   weightPercent: number;
   impact: "bullish" | "bearish" | "neutral";
   detailAr: string;
+  shapValueBasisPoints: number; // SHAP value e.g. +42 bps (+4.2% on probability)
+  category: "SMC" | "ORDER_FLOW" | "INTERMARKET" | "SESSION" | "MOMENTUM" | "MACRO";
 }
 
 export interface TenYearEraPerformance {
@@ -861,12 +889,74 @@ export interface TenYearEraPerformance {
   candles15mCount: number;
   winRatePercent: number;
   profitFactor: number;
+  sharpeRatio?: number;
+  maxDrawdown?: number;
+}
+
+export interface MlMultiHorizonForecast {
+  horizon: "SCALP_15M" | "INTRADAY_4H" | "SWING_48H";
+  horizonLabelAr: string;
+  expectedMovePips: number;
+  targetPrice: number;
+  winProbabilityPercent: number;
+  expectedValueR: number;
+  recommendedTrailingPips: number;
+  confidenceGrade: "S-Tier" | "A+" | "A" | "B";
+}
+
+export interface ModelEnsembleBreakdown {
+  transformer: {
+    name: "Temporal Fusion Transformer (TFT)";
+    winProbability: number;
+    attentionHeadsCount: number;
+    topAttendedCandleIndices: number[]; // relative 15m candle lag
+    temporalWeight: number;
+  };
+  bilstm: {
+    name: "Bi-Directional LSTM + Bahdanau Attention";
+    winProbability: number;
+    hiddenUnits: number;
+    memoryCellState: number;
+    sequenceLoss: number;
+  };
+  xgboost: {
+    name: "XGBoost 4.0 Quantum Tree Ensemble";
+    winProbability: number;
+    treesCount: number;
+    maxDepth: number;
+    giniImpurity: number;
+  };
+  catboost: {
+    name: "CatBoost & LightGBM Categorical Engine";
+    winProbability: number;
+    iterations: number;
+    learningRate: number;
+    featureConvergenceScore: number;
+  };
 }
 
 export interface GoldMlPredictionResult {
   winProbabilityPercent: number;
   lstmProbability: number;
   xgboostProbability: number;
+  transformerProbability: number;
+  catboostProbability: number;
+  ensembleAgreementScore: number; // 0 - 100% agreement among the 4 models
+  uncertaintyInterval: {
+    lowerBoundPercent: number;
+    upperBoundPercent: number;
+    epistemicUncertainty: number; // model uncertainty
+    aleatoricUncertainty: number; // data noise uncertainty
+    isOutOfDistribution: boolean;
+  };
+  detectedRegime: {
+    regime: MlMarketRegime;
+    regimeLabelAr: string;
+    regimeStabilityPercent: number;
+    transitionRiskAr: string;
+  };
+  horizons: MlMultiHorizonForecast[];
+  modelEnsemble: ModelEnsembleBreakdown;
   openAiSynthesizedScore: number;
   recommendedAction: "BUY" | "SELL" | "HOLD";
   actionGrade: "A++ Institutional Machine Learning" | "A High Probability" | "B Scalp Rejection";
@@ -895,6 +985,9 @@ export interface GoldMlPredictionResult {
     profitFactor: number;
     maxDrawdownPercent: number;
     sharpeRatio: number;
+    sortinoRatio?: number;
+    calmarRatio?: number;
+    informationCoefficient?: number;
     eraAccuracies: TenYearEraPerformance[];
   };
   tradeSetup: {
@@ -1070,6 +1163,8 @@ export interface HighImpactMacroEvent {
   scheduledTime: number;
   timeFormatted: string;
   countdownMinutes: number;
+  countdownFormattedAr?: string;
+  officialReleaseTimingAr?: string;
   previous: string;
   forecast: string;
   actual?: string | null;
@@ -1799,6 +1894,433 @@ export interface CrudeOilAnalysisReport {
   aiSynthesisAr: string;
 }
 
+// ==============================================================================
+// 11. FOOTPRINT TECHNICAL DRAWINGS & AI LEVELS TYPES
+// ==============================================================================
 
+export type DrawingToolType = "cursor" | "trendline" | "support" | "resistance";
 
+export interface ChartDrawingPoint {
+  price: number;
+  time: number; // Bar timestamp
+}
 
+export interface ChartDrawing {
+  id: string;
+  type: "trendline" | "support" | "resistance";
+  points: ChartDrawingPoint[];
+  color: string;
+  lineWidth: number;
+  lineStyle: "solid" | "dashed" | "dotted";
+  label?: string;
+  source: "manual" | "ai";
+  createdAt: number;
+  price?: number;
+}
+
+// ==============================================================================
+// 12. ANALYTICAL MEMORY & STRATEGY BACKTEST JOURNAL TYPES
+// ==============================================================================
+
+export type SetupOutcome = "WIN" | "LOSS" | "INVALIDATED" | "WAIT_EXERCISED";
+
+export interface TradeJournalEntry {
+  id: string;
+  timestamp: number;
+  dateStr: string;
+  session: "Tokyo" | "London" | "New York";
+  direction: "BUY" | "SELL" | "WAIT";
+  directionAr: string;
+  entryPrice: number;
+  stopLoss: number;
+  tp1: number;
+  tp2: number;
+  riskReward: string;
+  outcome: SetupOutcome;
+  outcomeAr: string;
+  pnlPips: number;
+  pnlDollars: number;
+  winProbability: number;
+  confluenceAgreed: string[];
+  dissentingTools: string[];
+  regime: "Trending" | "Ranging" | "Volatile" | "NewsShock" | "LowLiquidity";
+  regimeAr: string;
+  auditExplanationAr: string;
+  keyLessonAr: string;
+  setupNameAr: string;
+}
+
+export interface SessionStats {
+  tradesCount: number;
+  winRate: number;
+  profitFactor: number;
+  netPnlPips: number;
+}
+
+export interface BacktestSummaryReport {
+  totalTrades: number;
+  wins: number;
+  losses: number;
+  invalidatedOrWaited: number;
+  winRate: number;
+  profitFactor: number;
+  maxDrawdownPercent: number;
+  expectancyR: number;
+  avgWinR: number;
+  avgLossR: number;
+  sessionStats: {
+    tokyo: SessionStats;
+    london: SessionStats;
+    newYork: SessionStats;
+  };
+  regimePerformance: {
+    regime: string;
+    regimeAr: string;
+    winRate: number;
+    tradesCount: number;
+    recommendedActionAr: string;
+  }[];
+  modelMemoryHealth: string;
+  noLookaheadVerified: boolean;
+  aiRegimeVerdictAr: string;
+}
+
+// ==============================================================================
+// 13. GANN SQUARE OF 9, TIME CYCLES & ATR VOLATILITY TYPES
+// ==============================================================================
+
+export interface GannSquareLevel {
+  degree: number; // 45, 90, 135, 180, 225, 270, 315, 360
+  price: number;
+  roleAr: string;
+  type: "major_pivot" | "harmonic_angle" | "cardinal_cross" | "fixed_cycle";
+  distancePips: number;
+  vibrationalEnergyPercent: number;
+}
+
+export interface GannAngleLine {
+  id: string;
+  name: "1x1 (45°)" | "1x2 (63.75°)" | "2x1 (26.25°)" | "1x4 (75°)" | "4x1 (15°)";
+  slopeAngle: number;
+  calculatedPrice: number;
+  biasAr: "Bullish Control" | "Bearish Control" | "Neutral Balance";
+  significanceAr: string;
+}
+
+export interface TimeCycleTurningPoint {
+  id: string;
+  nameAr: string;
+  cycleTimeUtc: string;
+  session: "Tokyo" | "London" | "New York";
+  expectedActionAr: string;
+  averageVolatilityPips: number;
+  historicalAccuracyPercent: number;
+  timeWindowRemainingMinutes: number;
+}
+
+export interface AtrVolatilityMetric {
+  timeframe: "1m" | "5m" | "15m" | "1h" | "4h" | "1D";
+  atrPips: number;
+  atrDollars: number;
+  volatilityState: "Compression" | "Normal" | "High_Expansion" | "Extreme_Shock";
+  volatilityStateAr: string;
+  recommendedSlPips: number;
+  recommendedTpPips: number;
+  expansionProbabilityPercent: number;
+}
+
+export interface GannCyclesAnalysisReport {
+  currentPrice: number;
+  vibrationalAnchorPrice: number;
+  primaryGannLevel: GannSquareLevel;
+  gannSquareLevels: GannSquareLevel[];
+  gannAngles: GannAngleLine[];
+  upcomingTimeCycles: TimeCycleTurningPoint[];
+  atrMetrics: AtrVolatilityMetric[];
+  cycleResonanceScore: number;
+  masterCycleVerdictAr: string;
+  gannDisclaimerAr: string;
+}
+
+// ==============================================================================
+// 14. PRE-SESSION ROADMAP & LEVEL REACTION ENGINE TYPES
+// ==============================================================================
+
+export interface PlannedTradeZone {
+  id: string;
+  type: "BUY_ZONE" | "SELL_ZONE";
+  typeAr: string;
+  priceMin: number;
+  priceMax: number;
+  centerPrice: number;
+  strengthPercent: number;
+  rationaleAr: string;
+  requiredConfirmationAr: string;
+  invalidationLevel: number;
+  evidenceFactors: string[];
+}
+
+export interface LevelReactionScenario {
+  id: string;
+  levelNameAr: string;
+  targetPrice: number;
+  scenarioType: "REJECTION" | "BREAKOUT_ACCEPTANCE" | "BREAKDOWN_ACCEPTANCE" | "WAIT";
+  triggerConditionAr: string;
+  executionActionAr: string;
+  stopLossPrice: number;
+  takeProfitPrice: number;
+  riskReward: string;
+  confidencePercent: number;
+}
+
+export interface HistoricalLevelAccuracyRecord {
+  id: string;
+  dateStr: string;
+  session: string;
+  levelPrice: number;
+  levelTypeAr: string;
+  priceActionReactionAr: "Bounce Win" | "Rejection Win" | "Fakeout Protected" | "Clean Breakout";
+  accuracyScorePercent: number;
+}
+
+export interface PreSessionRoadmapReport {
+  currentSession: "Tokyo" | "London" | "New York";
+  currentSessionAr: string;
+  nextSession: "Tokyo" | "London" | "New York";
+  nextSessionAr: string;
+  sessionCountdownMinutes: number;
+  dstStatusAr: string;
+  localTimeDisplay: string;
+  utcTimeDisplay: string;
+  previousSessionMetrics: {
+    high: number;
+    low: number;
+    rangePips: number;
+    pocPrice: number;
+    vwapPrice: number;
+    totalVolumeLots: number;
+    netDeltaPercent: number;
+    trendTypeAr: string;
+  };
+  plannedBuyZones: PlannedTradeZone[];
+  plannedSellZones: PlannedTradeZone[];
+  reactionScenarios: LevelReactionScenario[];
+  historicalAccuracyList: HistoricalLevelAccuracyRecord[];
+  sessionRoadmapSynthesisAr: string;
+  mandatoryWaitNoticeAr: string;
+}
+
+// ==============================================================================
+// 15. ARGON-4 QUANTUM AI INTELLIGENCE TYPES
+// ==============================================================================
+
+export type Argon4DecisionState = "ACTIVE_CONVICTION" | "WAIT_STANDSTILL" | "VOLATILITY_DEFENSE";
+
+export interface Argon4VectorScore {
+  vectorId: string;
+  vectorNumber: number;
+  nameAr: string;
+  nameEn: string;
+  score: number; // 0 to 100
+  signal: "BULLISH" | "BEARISH" | "NEUTRAL";
+  signalAr: string;
+  weightPercent: number;
+  metricDetail: string;
+  descriptionAr: string;
+}
+
+export interface Argon4TradeExecution {
+  action: "BUY" | "SELL" | "WAIT";
+  actionAr: string;
+  entryPrice: number;
+  stopLossPrice: number;
+  tp1Price: number;
+  tp2Price: number;
+  tpRunnerPrice: number;
+  riskRewardRatio: string;
+  invalidationPrice: number;
+  positionSizingLots: number;
+  mt5TicketCommand: string;
+  grade: "S-Tier Quantum" | "Grade-A Institutional" | "Defense Standstill";
+  rationaleAr: string;
+}
+
+export interface Argon4LiquidityCluster {
+  id: string;
+  price: number;
+  type: "ICEBERG_BUY" | "ICEBERG_SELL" | "DARK_POOL" | "STOP_HUNT_SWEEP";
+  typeAr: string;
+  volumeLots: number;
+  strengthPercent: number;
+  distancePips: number;
+  descriptionAr: string;
+}
+
+export interface Argon4EngineTelemetry {
+  id: "technical" | "liquidity" | "order_flow" | "comex_futures" | "macro_geopolitical" | "smart_levels" | "machine_learning" | "risk_management";
+  engineNumber: number;
+  nameAr: string;
+  nameEn: string;
+  status: "OPTIMAL" | "CAUTION" | "DIVERGENT" | "STANDSTILL";
+  statusAr: string;
+  signal: "BULLISH" | "BEARISH" | "NEUTRAL";
+  signalAr: string;
+  confidence: number; // 0 - 100%
+  weightPercent: number;
+  primaryMetrics: { labelAr: string; value: string; isRealtime: boolean }[];
+  confirmedFacts: string[]; // أدلة قطعية مؤكدة من البيانات اللحظية
+  modeledForecast: string; // التوقع المحسوب وفق النموذج
+  probabilityPercent: number; // النسبة الاحتمالية الإحصائية
+  dataSource: string; // مصدر البيانات اللحظي
+  lastUpdated: number;
+}
+
+export interface Argon4ScenarioComparison {
+  bullishScenario: {
+    probability: number;
+    catalystAr: string;
+    triggerLevel: number;
+    invalidationPrice: number;
+    supportedEvidenceCount: number;
+  };
+  bearishScenario: {
+    probability: number;
+    catalystAr: string;
+    triggerLevel: number;
+    invalidationPrice: number;
+    supportedEvidenceCount: number;
+  };
+  selectedScenario: "BULLISH" | "BEARISH" | "NEUTRAL_WAIT";
+  selectedScenarioAr: string;
+  selectionRationaleAr: string;
+  divergenceWarningAr?: string;
+}
+
+export interface Argon4SmartLevelAnalysis {
+  id: string;
+  levelPrice: number;
+  levelType: "BUY_ZONE" | "SELL_ZONE" | "PIVOT_POC";
+  levelTypeAr: string;
+  behavior: "APPROACHING" | "REJECTION_CONFIRMED" | "BREAKOUT_ACCEPTANCE" | "FALSE_BREAKOUT_TRAP";
+  behaviorAr: string;
+  acceptanceThreshold: number;
+  evidenceScore: number;
+  actionableSignalAr: string;
+}
+
+export interface Argon4OutOfSampleAudit {
+  testedTradesCount: number;
+  outOfSampleWinRate: number; // e.g. 84.8%
+  profitFactor: number; // e.g. 2.74
+  maxHistoricalDrawdown: number; // e.g. 3.8%
+  currentMarketRegime: string;
+  lastValidationDate: string;
+  overfittingProtectionStatusAr: string;
+}
+
+export interface DepthTierItem {
+  tierNumber: number;
+  bidPrice: number;
+  bidVolumeLots: number;
+  bidAccumLots: number;
+  bidDepthPercent: number;
+  askPrice: number;
+  askVolumeLots: number;
+  askAccumLots: number;
+  askDepthPercent: number;
+}
+
+export interface Argon4BigDataMathEngine {
+  throughput: {
+    tickThroughputPerSec: number;
+    totalProcessedEvents24h: number;
+    streamBufferFillPercent: number;
+    latencyMicroseconds: number;
+    lastTickTimestamp: number;
+  };
+  orderBookImbalance: {
+    ratio: number; // -1.0 to +1.0
+    statusAr: string;
+    zScore: number; // e.g. +2.64 sigma
+    pValue: number; // e.g. 0.0041
+    isStatisticallySignificant: boolean; // p < 0.05
+    hypothesisVerdictAr: string;
+    microPrice: number;
+    microPriceDeltaDollars: number;
+    spreadPips: number;
+    shannonEntropyScore: number; // 0 to 2.5
+    entropyStateAr: string;
+    totalBidDepthLots: number;
+    totalAskDepthLots: number;
+    depthLadder: DepthTierItem[];
+  };
+  futuresFlow: {
+    activeContract: string; // "GC (COMEX Gold Active)"
+    netDeltaContracts: number;
+    cvdAcceleration: number; // contracts / min^2
+    basisSpreadDollars: number;
+    basisZScore: number;
+    blockTradesCount: number;
+    passiveIcebergAbsorptionLots: number;
+    openInterestDailyChange: number;
+    cotSmartMoneyPercent: number;
+  };
+  mathematicalDecisionGate: {
+    isVettedByBigData: boolean;
+    gateState: "APPROVED_CONFIRMED" | "VETO_IMBALANCE_DIVERGENCE" | "VETO_TOXIC_FLOW" | "STANDSTILL_LOW_SIGNAL";
+    gateStateAr: string;
+    statisticalConfidenceScore: number; // e.g. 96.8%
+    enginesConsensusWeight: number; // 0 to 100
+    mathProofRationaleAr: string;
+  };
+}
+
+export interface Argon4AnalysisReport {
+  timestamp: number;
+  currentPrice: number;
+  decisionState: Argon4DecisionState;
+  decisionStateAr: string;
+  overallConfidence: number; // 0 - 100%
+  dominantBias: "BULLISH_EXPANSION" | "BEARISH_DISTRIBUTION" | "NEUTRAL_COMPRESSION";
+  dominantBiasAr: string;
+  vpinToxicityRatio: number; // 0.0 - 1.0 (Volume-Synchronized Probability of Toxicity)
+  vpinStatusAr: string;
+  // Mathematical Big Data Processing Engine
+  bigDataMathEngine: Argon4BigDataMathEngine;
+  // Multi-Engine Architecture: The 8 Specialized Engines
+  proEngines: {
+    technical: Argon4EngineTelemetry;
+    liquidity: Argon4EngineTelemetry;
+    order_flow: Argon4EngineTelemetry;
+    comex_futures: Argon4EngineTelemetry;
+    macro_geopolitical: Argon4EngineTelemetry;
+    smart_levels: Argon4EngineTelemetry;
+    machine_learning: Argon4EngineTelemetry;
+    risk_management: Argon4EngineTelemetry;
+  };
+  // Backward compatibility with legacy 4 vectors
+  vectors: {
+    vector1_orderflow: Argon4VectorScore;
+    vector2_liquidity: Argon4VectorScore;
+    vector3_volatility: Argon4VectorScore;
+    vector4_macro: Argon4VectorScore;
+  };
+  tradeExecution: Argon4TradeExecution;
+  scenarioComparison: Argon4ScenarioComparison;
+  smartLevels: Argon4SmartLevelAnalysis[];
+  outOfSampleAudit: Argon4OutOfSampleAudit;
+  liquidityClusters: Argon4LiquidityCluster[];
+  dataProvenance: {
+    feed: string;
+    feedAr: string;
+    latencyMs: number;
+    status: string;
+    timestamp: number;
+  }[];
+  voiceBriefingAr: string;
+  aiSynthesisAr: string;
+  aiRawDeepAnalysis?: string;
+  keyCatalystHeadlineAr: string;
+  historicalHitRatePercent: number;
+  confluencePillarsCount: number; // e.g. 8/8 or 7/8
+}

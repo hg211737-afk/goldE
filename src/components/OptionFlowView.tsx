@@ -1,11 +1,29 @@
-import React from "react";
-import { TrendingUp, TrendingDown, ShieldAlert, Zap, Layers, BarChart3, PieChart } from "lucide-react";
+import React, { useState } from "react";
+import { TrendingUp, TrendingDown, ShieldAlert, Zap, Layers, BarChart3, PieChart, RotateCw, CheckCircle2 } from "lucide-react";
 
 interface OptionFlowViewProps {
   currentPrice: number;
+  onRefresh?: () => void;
 }
 
-export const OptionFlowView: React.FC<OptionFlowViewProps> = ({ currentPrice }) => {
+export const OptionFlowView: React.FC<OptionFlowViewProps> = ({ currentPrice, onRefresh }) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<string>("محدث الآن");
+
+  const getFutureDate = (days: number) => {
+    const d = new Date(Date.now() + days * 86400000);
+    return d.toISOString().split("T")[0];
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    if (onRefresh) onRefresh();
+    setTimeout(() => {
+      setIsRefreshing(false);
+      setLastRefreshed(new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+    }, 700);
+  };
+
   // Option Flow data simulating institutional Gold (XAU) options activity
   const callVolume = 148250;
   const putVolume = 94100;
@@ -14,11 +32,11 @@ export const OptionFlowView: React.FC<OptionFlowViewProps> = ({ currentPrice }) 
   const bullishSentiment = Math.round((callVolume / totalVol) * 100);
 
   const unusualBlocks = [
-    { id: "opt-1", strike: Number((currentPrice + 15).toFixed(3)), expiry: "2026-10-30", type: "CALL", contracts: 12500, premium: "$4.85M", sentiment: "Bullish Sweep", institutional: "صانع سوق رئيسي (Goldman Sachs Desk)" },
-    { id: "opt-2", strike: Number((currentPrice + 25).toFixed(3)), expiry: "2026-11-27", type: "CALL", contracts: 8400, premium: "$2.92M", sentiment: "Aggressive Buy", institutional: "صندوق تحوط كبيـر (Macro Hedge Fund)" },
-    { id: "opt-3", strike: Number((currentPrice - 10).toFixed(3)), expiry: "2026-10-16", type: "PUT", contracts: 15200, premium: "$5.10M", sentiment: "Hedging Protection", institutional: "محفظة بنك مركزي / مؤسسي" },
-    { id: "opt-4", strike: Number((currentPrice + 35).toFixed(3)), expiry: "2026-12-31", type: "CALL", contracts: 22000, premium: "$8.45M", sentiment: "Gamma Squeeze Target", institutional: "تكدس خيارات شراء بعيدة المدى" },
-    { id: "opt-5", strike: Number((currentPrice - 20).toFixed(3)), expiry: "2026-10-16", type: "PUT", contracts: 9800, premium: "$3.15M", sentiment: "Bearish Put Block", institutional: "تأمين هبوطي قصير الأجل" },
+    { id: "opt-1", strike: Number((currentPrice + 15).toFixed(3)), expiry: getFutureDate(7), type: "CALL", contracts: 12500, premium: "$4.85M", sentiment: "Bullish Sweep", institutional: "صانع سوق رئيسي (Goldman Sachs Desk)" },
+    { id: "opt-2", strike: Number((currentPrice + 25).toFixed(3)), expiry: getFutureDate(21), type: "CALL", contracts: 8400, premium: "$2.92M", sentiment: "Aggressive Buy", institutional: "صندوق تحوط كبيـر (Macro Hedge Fund)" },
+    { id: "opt-3", strike: Number((currentPrice - 10).toFixed(3)), expiry: getFutureDate(14), type: "PUT", contracts: 15200, premium: "$5.10M", sentiment: "Hedging Protection", institutional: "محفظة بنك مركزي / مؤسسي" },
+    { id: "opt-4", strike: Number((currentPrice + 35).toFixed(3)), expiry: getFutureDate(45), type: "CALL", contracts: 22000, premium: "$8.45M", sentiment: "Gamma Squeeze Target", institutional: "تكدس خيارات شراء بعيدة المدى" },
+    { id: "opt-5", strike: Number((currentPrice - 20).toFixed(3)), expiry: getFutureDate(14), type: "PUT", contracts: 9800, premium: "$3.15M", sentiment: "Bearish Put Block", institutional: "تأمين هبوطي قصير الأجل" },
   ];
 
   const gammaLevels = [
@@ -46,16 +64,28 @@ export const OptionFlowView: React.FC<OptionFlowViewProps> = ({ currentPrice }) 
             رصد الصفقات الكبيرة المعلقة (Block Trades) وعقود الخيارات المؤسسية وحشود جدار الغاما (Gamma Walls).
           </p>
         </div>
-        <div className="flex items-center gap-3 bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-lg font-['JetBrains_Mono']">
-          <div>
-            <span className="text-[10px] text-slate-400 block">نسبة بوت/كول (P/C Ratio)</span>
-            <span className="text-amber-400 font-bold">{putCallRatio}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-lg font-['JetBrains_Mono']">
+            <div>
+              <span className="text-[10px] text-slate-400 block">نسبة بوت/كول (P/C Ratio)</span>
+              <span className="text-amber-400 font-bold">{putCallRatio}</span>
+            </div>
+            <div className="w-[1px] h-7 bg-slate-800" />
+            <div>
+              <span className="text-[10px] text-slate-400 block">معنويات الخيارات</span>
+              <span className="text-emerald-400 font-bold">{bullishSentiment}% صاعد (Bullish)</span>
+            </div>
           </div>
-          <div className="w-[1px] h-7 bg-slate-800" />
-          <div>
-            <span className="text-[10px] text-slate-400 block">معنويات الخيارات</span>
-            <span className="text-emerald-400 font-bold">{bullishSentiment}% صاعد (Bullish)</span>
-          </div>
+
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-bold transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            title="تحديث تدفق خيارات الذهب UOA فورياً"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-amber-400" : ""}`} />
+            <span className="hidden sm:inline">{isRefreshing ? "تحديث..." : "تحديث الأوبشن"}</span>
+          </button>
         </div>
       </div>
 

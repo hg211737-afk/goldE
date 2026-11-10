@@ -41,12 +41,14 @@ interface PreNewsPredictiveViewProps {
   currentPrice: number;
   openAiKey?: string;
   onOpenSettings?: () => void;
+  onRefresh?: () => void;
 }
 
 export const PreNewsPredictiveView: React.FC<PreNewsPredictiveViewProps> = ({
   currentPrice = 4293.65,
   openAiKey,
   onOpenSettings,
+  onRefresh,
 }) => {
   const [selectedEventCode, setSelectedEventCode] = useState<MacroEventCode>("CPI");
   const [report, setReport] = useState<PreNewsPredictiveReport>(() =>
@@ -56,6 +58,31 @@ export const PreNewsPredictiveView: React.FC<PreNewsPredictiveViewProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [liveBreakingNews, setLiveBreakingNews] = useState<any[]>([]);
+  const [isLoadingLiveNews, setIsLoadingLiveNews] = useState(false);
+
+  const fetchLiveGoldNews = async () => {
+    setIsLoadingLiveNews(true);
+    try {
+      const res = await fetch("/api/news/live?asset=gold");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.news && Array.isArray(data.news)) {
+          setLiveBreakingNews(data.news);
+        }
+      }
+    } catch {
+      // non-blocking
+    } finally {
+      setIsLoadingLiveNews(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveGoldNews();
+    const interval = setInterval(fetchLiveGoldNews, 45000);
+    return () => clearInterval(interval);
+  }, []);
 
   // What-If Simulator state
   const [simSurprise, setSimSurprise] = useState<
@@ -74,7 +101,32 @@ export const PreNewsPredictiveView: React.FC<PreNewsPredictiveViewProps> = ({
     );
   }, [currentPrice, selectedEventCode]);
 
+  const [nowTime, setNowTime] = useState<number>(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowTime(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const activeEvent: HighImpactMacroEvent = report.featuredEvent;
+
+  const liveCountdown = useMemo(() => {
+    if (!activeEvent.scheduledTime) return null;
+    const diffMs = Math.max(0, activeEvent.scheduledTime - nowTime);
+    const totalSecs = Math.floor(diffMs / 1000);
+    const days = Math.floor(totalSecs / 86400);
+    const hours = Math.floor((totalSecs % 86400) / 3600);
+    const minutes = Math.floor((totalSecs % 3600) / 60);
+    const seconds = totalSecs % 60;
+    return {
+      days,
+      hours,
+      minutes,
+      seconds,
+      text: `${days > 0 ? `${days}d ` : ""}${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
+      isPast: diffMs <= 0,
+    };
+  }, [activeEvent.scheduledTime, nowTime]);
 
   // Selected scenario
   const activeScenario = useMemo(() => {
@@ -133,6 +185,8 @@ export const PreNewsPredictiveView: React.FC<PreNewsPredictiveViewProps> = ({
   const handleRefresh = () => {
     setIsRefreshing(true);
     soundFx.playHudClick();
+    fetchLiveGoldNews();
+    if (onRefresh) onRefresh();
     setTimeout(() => {
       setReport(
         generatePreNewsPredictiveReport(
@@ -193,17 +247,22 @@ export const PreNewsPredictiveView: React.FC<PreNewsPredictiveViewProps> = ({
 
           {/* Quick Refresh & Live Countdown Card */}
           <div className="flex items-center gap-3 shrink-0 self-stretch md:self-auto justify-between md:justify-end">
-            <div className="p-3 rounded-xl bg-slate-950/80 border border-amber-500/40 text-center shadow-lg min-w-[140px]">
-              <div className="flex items-center justify-center gap-1 text-[11px] text-amber-400 font-bold mb-0.5">
+            <div className="p-3 rounded-xl bg-slate-950/90 border border-amber-500/50 text-center shadow-xl min-w-[160px]">
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-amber-400 font-bold mb-0.5">
                 <Clock className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                <span>العد التنازلي للصدور</span>
+                <span>العد التنازلي الحي للصدور</span>
               </div>
-              <div className="text-lg sm:text-xl font-black text-white font-mono tracking-tight">
-                T- {activeEvent.countdownMinutes} دقيقة
+              <div className="text-xl sm:text-2xl font-black text-amber-300 font-mono tracking-tight drop-shadow">
+                {liveCountdown?.text ? `T- ${liveCountdown.text}` : `T- ${activeEvent.countdownMinutes}m`}
               </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">
+              <div className="text-[10px] text-slate-300 font-semibold mt-0.5">
                 {activeEvent.timeFormatted}
               </div>
+              {activeEvent.officialReleaseTimingAr && (
+                <div className="text-[9px] text-amber-400/80 font-mono mt-0.5">
+                  {activeEvent.officialReleaseTimingAr}
+                </div>
+              )}
             </div>
 
             <button
@@ -224,7 +283,7 @@ export const PreNewsPredictiveView: React.FC<PreNewsPredictiveViewProps> = ({
         {/* 2. Event Selection Tabs (CPI, NFP, FOMC, PCE, Retail Sales) */}
         <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
           <span className="text-xs text-slate-400 font-bold whitespace-nowrap pl-1">
-            اختر المؤشر الاقتصادي:
+            الأجندة الاقتصادية الحقيقية:
           </span>
           {report.upcomingEvents.map((evt) => (
             <button
@@ -241,10 +300,115 @@ export const PreNewsPredictiveView: React.FC<PreNewsPredictiveViewProps> = ({
             >
               <span className="font-mono">{evt.code}</span>
               <span className="text-[10px] opacity-90 hidden sm:inline">
-                ({evt.countdownMinutes}m)
+                ({evt.countdownFormattedAr ? evt.countdownFormattedAr.replace("متبقي ", "") : `${evt.countdownMinutes}m`})
               </span>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* LIVE REAL-TIME BREAKING NEWS WIRE STRIP */}
+      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-950/40 via-slate-900 to-[#121727] border border-red-500/30 space-y-2.5">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+            </span>
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Newspaper className="w-3.5 h-3.5 text-red-400" />
+              <span>شريط الأخبار اللحظية العاجلة المباشرة (Live Real-Time Gold Wire):</span>
+            </span>
+            <span className="text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full border border-red-500/30 font-mono">
+              توقيت حي ومحدث
+            </span>
+          </div>
+
+          <button
+            onClick={fetchLiveGoldNews}
+            disabled={isLoadingLiveNews}
+            className="flex items-center gap-1 text-[10px] text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 transition-all cursor-pointer"
+          >
+            <RotateCw className={`w-3 h-3 text-red-400 ${isLoadingLiveNews ? "animate-spin" : ""}`} />
+            <span>تحديث البث الحي</span>
+          </button>
+        </div>
+
+        {/* News Headlines Horizontal Scroller / Items (up to 6 items) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+          {isLoadingLiveNews && liveBreakingNews.length === 0 ? (
+            <div className="col-span-full p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+              <RotateCw className="w-4 h-4 animate-spin text-red-400" />
+              <span>جاري استدعاء البث اللحظي الفعلي للأخبار من المصادر العالمية...</span>
+            </div>
+          ) : liveBreakingNews.length === 0 ? (
+            <div className="col-span-full p-3 text-center text-xs text-slate-400">
+              بث الأخبار متصل ومحدث لحظياً.
+            </div>
+          ) : (
+            liveBreakingNews.slice(0, 6).map((n: any, idx: number) => {
+              const isBull = /surge|gain|rise|soar|high|rally|record|صعود|مكاسب|ارتفاع/i.test(
+                (n.title || "") + " " + (n.titleAr || "")
+              );
+              const isBear = /drop|plunge|fall|sink|decline|retreat|هبوط|تراجع/i.test(
+                (n.title || "") + " " + (n.titleAr || "")
+              );
+              return (
+                <div
+                  key={n.id || idx}
+                  className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/90 hover:border-amber-500/40 transition-all flex flex-col justify-between gap-2 shadow-sm"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px] gap-1">
+                      <span className="font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded font-mono border border-amber-500/20">
+                        {n.source || "Yahoo Finance"}
+                      </span>
+                      <span className="text-slate-400 font-mono text-[10px] flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5 text-slate-500" />
+                        {n.timeAgo || "الآن"} {n.exactTimeUtc ? `• ${n.exactTimeUtc}` : ""}
+                      </span>
+                    </div>
+
+                    <h5 className="text-[12px] font-bold text-slate-100 leading-snug">
+                      {n.titleAr || n.title}
+                    </h5>
+
+                    {n.titleAr && n.titleAr !== n.title && (
+                      <p className="text-[10px] text-slate-400 line-clamp-1 italic font-sans" dir="ltr">
+                        {n.title}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1.5 border-t border-slate-900 text-[10px]">
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        isBull
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          : isBear
+                          ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                          : "bg-slate-800 text-slate-300 border border-slate-700"
+                      }`}
+                    >
+                      {isBull ? "🟢 دعم صاعد" : isBear ? "🔴 ضغط بيعي" : "🟡 حيادي"}
+                    </span>
+
+                    {n.link && (
+                      <a
+                        href={n.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-amber-400 hover:text-amber-300 text-[10px] font-medium flex items-center gap-0.5 underline decoration-dotted"
+                      >
+                        <span>المصدر</span>
+                        <ArrowUpRight className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

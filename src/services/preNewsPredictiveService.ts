@@ -28,7 +28,105 @@ interface EventTemplate {
   historicalBehaviorSummaryAr: string;
   institutionalTrapWarningAr: string;
   safeTradingWindowAr: string;
-  minutesUntilRelease: number;
+}
+
+function getMonthNameAr(m: number): string {
+  const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+  return months[m] || "";
+}
+
+function getDayNameAr(d: number): string {
+  const days = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+  return days[d] || "";
+}
+
+export function getRealScheduledDate(code: MacroEventCode, now = new Date()): { date: Date; dateFormattedAr: string; timingDetailsAr: string } {
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const date = now.getUTCDate();
+
+  if (code === "NFP") {
+    let firstFri = new Date(Date.UTC(year, month, 1, 13, 30, 0));
+    while (firstFri.getUTCDay() !== 5) {
+      firstFri.setUTCDate(firstFri.getUTCDate() + 1);
+    }
+    if (firstFri.getTime() < now.getTime()) {
+      firstFri = new Date(Date.UTC(year, month + 1, 1, 13, 30, 0));
+      while (firstFri.getUTCDay() !== 5) {
+        firstFri.setUTCDate(firstFri.getUTCDate() + 1);
+      }
+    }
+    const dayName = getDayNameAr(firstFri.getUTCDay());
+    const monthName = getMonthNameAr(firstFri.getUTCMonth());
+    return {
+      date: firstFri,
+      dateFormattedAr: `${dayName} ${firstFri.getUTCDate()} ${monthName} ${firstFri.getUTCFullYear()} • 13:30 بتوقيت غرينتش (8:30 ص نيويورك)`,
+      timingDetailsAr: "الموعد الرسمي الشهري (أول جمعة من الشهر)"
+    };
+  }
+
+  if (code === "FOMC") {
+    let fomcDate = new Date(Date.UTC(year, month, 5, 18, 0, 0));
+    if (fomcDate.getTime() < now.getTime()) {
+      fomcDate = new Date(Date.UTC(year, 11, 10, 18, 0, 0));
+    }
+    const dayName = getDayNameAr(fomcDate.getUTCDay());
+    const monthName = getMonthNameAr(fomcDate.getUTCMonth());
+    return {
+      date: fomcDate,
+      dateFormattedAr: `${dayName} ${fomcDate.getUTCDate()} ${monthName} ${fomcDate.getUTCFullYear()} • 18:00 بتوقيت غرينتش (مؤتمر باول 18:30 UTC)`,
+      timingDetailsAr: "قرار الفائدة الفيدرالية + بيان السياسة النقدية ومؤتمر جيروم باول"
+    };
+  }
+
+  if (code === "CPI") {
+    let cpiDate = new Date(Date.UTC(year, month, 12, 13, 30, 0));
+    if (cpiDate.getTime() < now.getTime()) {
+      cpiDate = new Date(Date.UTC(year, month + 1, 11, 13, 30, 0));
+    }
+    const dayName = getDayNameAr(cpiDate.getUTCDay());
+    const monthName = getMonthNameAr(cpiDate.getUTCMonth());
+    return {
+      date: cpiDate,
+      dateFormattedAr: `${dayName} ${cpiDate.getUTCDate()} ${monthName} ${cpiDate.getUTCFullYear()} • 13:30 بتوقيت غرينتش`,
+      timingDetailsAr: "مؤشر أسعار المستهلكين الأمريكي الرسمي (Headline & Core CPI)"
+    };
+  }
+
+  if (code === "RETAIL_SALES") {
+    let rsDate = new Date(Date.UTC(year, month, 17, 13, 30, 0));
+    if (rsDate.getTime() < now.getTime()) {
+      rsDate = new Date(Date.UTC(year, month + 1, 16, 13, 30, 0));
+    }
+    const dayName = getDayNameAr(rsDate.getUTCDay());
+    const monthName = getMonthNameAr(rsDate.getUTCMonth());
+    return {
+      date: rsDate,
+      dateFormattedAr: `${dayName} ${rsDate.getUTCDate()} ${monthName} ${rsDate.getUTCFullYear()} • 13:30 بتوقيت غرينتش`,
+      timingDetailsAr: "مبيعات التجزئة ومجموعة التحكم الأساسية"
+    };
+  }
+
+  if (code === "PCE") {
+    let pceDate = new Date(Date.UTC(year, month, 25, 13, 30, 0));
+    if (pceDate.getTime() < now.getTime()) {
+      pceDate = new Date(Date.UTC(year, month + 1, 23, 13, 30, 0));
+    }
+    const dayName = getDayNameAr(pceDate.getUTCDay());
+    const monthName = getMonthNameAr(pceDate.getUTCMonth());
+    return {
+      date: pceDate,
+      dateFormattedAr: `${dayName} ${pceDate.getUTCDate()} ${monthName} ${pceDate.getUTCFullYear()} • 13:30 بتوقيت غرينتش`,
+      timingDetailsAr: "مقياس التضخم المفضل لدى الفيدرالي (Core PCE Index)"
+    };
+  }
+
+  const defaultDate = new Date(Date.UTC(year, month, date + 1, 13, 30, 0));
+  return {
+    date: defaultDate,
+    dateFormattedAr: `${defaultDate.getUTCDate()} ${getMonthNameAr(defaultDate.getUTCMonth())} • 13:30 UTC`,
+    timingDetailsAr: "الأجندة الاقتصادية العالمية"
+  };
 }
 
 const EVENT_TEMPLATES: EventTemplate[] = [
@@ -51,7 +149,6 @@ const EVENT_TEMPLATES: EventTemplate[] = [
       "تحذير فخ السيولة: البنوك الكبرى (Tier-1 Dealers) تضع عروض بيع آيسبرغ وهمية قبل الخبر بـ 15 دقيقة لاستدراج المشترين العاطفيين؛ تجنب دخول أوامر Market الفورية عند الثانية 00.",
     safeTradingWindowAr:
       "أفضل نافذة تنفيذ: انتظر إغلاق شمعة 5 دقائق الأولى بعد الخبر (T+5m)، وحدد اتجاه امتصاص الفاب (VWAP) للدخول مع اختبار كسر الكتل المؤسسية.",
-    minutesUntilRelease: 48,
   },
   {
     code: "NFP",
@@ -72,7 +169,6 @@ const EVENT_TEMPLATES: EventTemplate[] = [
       "انزلاق سعري حاد (Slippage): فروقات الأسعار (Spreads) تتسع إلى 35-50 نقطة في الثواني الخمس الأولى. الأوامر المعلقة Buy/Sell Stops قد تنفذ بأسعار سيئة جداً.",
     safeTradingWindowAr:
       "نافذة التداول الآمن: الدخول فقط عبر أوامر Limit المخفية أو انتظار ارتداد Silver Bullet الأمريكي بعد نصف ساعة من الصدور (13:00 UTC).",
-    minutesUntilRelease: 180,
   },
   {
     code: "FOMC",
@@ -93,7 +189,6 @@ const EVENT_TEMPLATES: EventTemplate[] = [
       "فخ المرحلة الأولى: كثيراً ما تعكس تصريحات باول في المؤتمر اتجاه الشمعة الأولى للبيان تماماً؛ لا تعتمد على الشمعة الأولى كاتجاه نهائي للجلسة.",
     safeTradingWindowAr:
       "نافذة التنفيذ الذهبية: التداول بعد الدقيقة العاشرة من بدء حديث باول حين تتضح الرؤية حول مسار خفض الفائدة ومخطط Dot Plot.",
-    minutesUntilRelease: 420,
   },
   {
     code: "PCE",
@@ -114,7 +209,6 @@ const EVENT_TEMPLATES: EventTemplate[] = [
       "تحرك بطيء ثم توسع متأخر: أحياناً يتأخر استيعاب السوق للبيان لمدة 10 دقائق قبل بدء انفجار السيولة الحقيقي.",
     safeTradingWindowAr:
       "نافذة التنفيذ: بعد 7 دقائق من الإصدار مع كسر خط المنتصف (VWAP Baseline).",
-    minutesUntilRelease: 720,
   },
   {
     code: "RETAIL_SALES",
@@ -135,7 +229,6 @@ const EVENT_TEMPLATES: EventTemplate[] = [
       "التأثير المشترك مع مؤشرات أخرى تصدر في نفس الدقيقة (مثل Empire State Index).",
     safeTradingWindowAr:
       "نافذة التنفيذ: الدخول مع ارتداد شمعة 5M الأولى نحو منطقة الخصم Discount Zone.",
-    minutesUntilRelease: 1140,
   },
 ];
 
@@ -299,6 +392,25 @@ export function generatePreNewsPredictiveReport(
     )} نقطة. تمركز السيولة المؤسسية يُظهر تكديساً ضخماً لأوامر وقف الشراء BSL عند $${bslPrice} (3,850 لوت) وأوامر SSL عند $${sslPrice} (4,200 لوت).
 تاريخياً، يسجل الذهب نسبة ارتداد فخ جوداس تبلغ ${tmpl.judasFakeoutRatePercent}% في الدقائق الثلاث الأولى. التوصية الاستباقية المؤكدة هي تجنب مطاردة الشمعة اللحظية الأولى وانتظار استقرار امتصاص السيولة عند مستوى $${sslPrice} لاقتناص موجة التوسع الصاعد نحو المستهدف المؤسسي $${longTarget}.`;
 
+    const realSched = getRealScheduledDate(tmpl.code, new Date(now));
+    const schedMs = realSched.date.getTime();
+    const diffMs = Math.max(0, schedMs - now);
+    const countdownMinutes = Math.round(diffMs / 60000);
+
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    const remHours = diffHours % 24;
+    const remMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    let countdownFormattedAr = "";
+    if (diffDays > 0) {
+      countdownFormattedAr = `متبقي ${diffDays} يوم و ${remHours} س و ${remMinutes} د`;
+    } else if (diffHours > 0) {
+      countdownFormattedAr = `متبقي ${diffHours} س و ${remMinutes} د`;
+    } else {
+      countdownFormattedAr = `متبقي ${remMinutes} دقيقة فقط`;
+    }
+
     return {
       id: `evt_${tmpl.code.toLowerCase()}`,
       titleAr: tmpl.titleAr,
@@ -306,11 +418,11 @@ export function generatePreNewsPredictiveReport(
       code: tmpl.code,
       country: "US",
       impact: "CRITICAL",
-      scheduledTime: now + tmpl.minutesUntilRelease * 60 * 1000,
-      timeFormatted: `اليوم بعد ${tmpl.minutesUntilRelease} دقيقة (${new Date(
-        now + tmpl.minutesUntilRelease * 60 * 1000
-      ).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })} UTC)`,
-      countdownMinutes: tmpl.minutesUntilRelease,
+      scheduledTime: schedMs,
+      timeFormatted: realSched.dateFormattedAr,
+      countdownMinutes,
+      countdownFormattedAr,
+      officialReleaseTimingAr: realSched.timingDetailsAr,
       previous: tmpl.previous,
       forecast: tmpl.forecast,
       unit: tmpl.unit,

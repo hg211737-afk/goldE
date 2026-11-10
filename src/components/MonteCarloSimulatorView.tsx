@@ -17,6 +17,7 @@ import { soundFx } from "../services/soundService";
 
 interface MonteCarloSimulatorViewProps {
   currentPrice: number;
+  onRefresh?: () => void;
 }
 
 interface PathPoint {
@@ -24,7 +25,7 @@ interface PathPoint {
   price: number;
 }
 
-export const MonteCarloSimulatorView: React.FC<MonteCarloSimulatorViewProps> = ({ currentPrice }) => {
+export const MonteCarloSimulatorView: React.FC<MonteCarloSimulatorViewProps> = ({ currentPrice, onRefresh }) => {
   const [horizon, setHorizon] = useState<"1h" | "4h" | "24h">("4h");
   const [simSeed, setSimSeed] = useState<number>(1);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -213,6 +214,7 @@ export const MonteCarloSimulatorView: React.FC<MonteCarloSimulatorViewProps> = (
 
   const handleRerun = () => {
     soundFx.playHudClick();
+    if (onRefresh) onRefresh();
     setSimSeed((s) => s + 1);
   };
 

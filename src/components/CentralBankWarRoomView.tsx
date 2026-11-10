@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Globe2,
   Landmark,
@@ -11,14 +11,23 @@ import {
   Database,
   Lock,
   Compass,
+  RotateCw,
 } from "lucide-react";
 
 interface CentralBankWarRoomViewProps {
   currentPrice: number;
+  onRefresh?: () => void;
 }
 
-export const CentralBankWarRoomView: React.FC<CentralBankWarRoomViewProps> = ({ currentPrice }) => {
+export const CentralBankWarRoomView: React.FC<CentralBankWarRoomViewProps> = ({ currentPrice, onRefresh }) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const p = currentPrice > 1000 ? currentPrice : 4293.65;
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    if (onRefresh) onRefresh();
+    setTimeout(() => setIsRefreshing(false), 700);
+  };
 
   const centralBanks = [
     {
@@ -83,6 +92,15 @@ export const CentralBankWarRoomView: React.FC<CentralBankWarRoomViewProps> = ({ 
             <span className="text-[10px] text-slate-400 block font-['Cairo']">سعر الأونصة الفوري:</span>
             <span className="text-xl font-black text-amber-400">${p.toFixed(2)}</span>
           </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-bold transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            title="تحديث بيانات التدفقات السيادية فوراً"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-amber-400" : ""}`} />
+            <span className="hidden sm:inline">{isRefreshing ? "تحديث..." : "تحديث السيادي"}</span>
+          </button>
         </div>
       </div>
 

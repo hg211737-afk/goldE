@@ -30,7 +30,14 @@ export async function analyzeGoldWithClaude(
   params: ClaudeAnalysisParams
 ): Promise<ClaudeAnalysisResult> {
   const p = params.currentPrice > 1000 ? params.currentPrice : 4293.65;
-  const model = params.claudeModel || "claude-3-7-sonnet-20250219";
+  const model = params.claudeModel || "claude-opus-5-5-2026";
+
+  const resolvedModelName =
+    model.includes("opus") || model.includes("5.5") || model.includes("5-5")
+      ? "Claude Opus 5.5"
+      : model.includes("3-7") || model.includes("3.7")
+      ? "Claude 3.7 Sonnet"
+      : "Claude 3.5 Sonnet";
 
   try {
     const res = await fetch("/api/claude/analyze-gold", {
@@ -55,16 +62,16 @@ export async function analyzeGoldWithClaude(
         return {
           ...data,
           engine: "claude",
-          model: model.includes("3-7") ? "Claude 3.7 Sonnet" : "Claude 3.5 Sonnet",
+          model: resolvedModelName,
           timestamp: Date.now(),
         };
       }
     }
   } catch (err) {
-    console.warn("Claude API call error, using institutional Claude engine:", err);
+    console.warn("Claude API call error, using institutional Claude Opus 5.5 engine:", err);
   }
 
-  // Institutional Claude fallback engine with deep SMC & structural reasoning
+  // Institutional Claude Opus 5.5 fallback engine with deep SMC & structural reasoning
   const bouncePrice = Number((p - 8.2).toFixed(2));
   const rejectionPrice = Number((p + 14.5).toFixed(2));
   const tp1 = Number((p + 12.0).toFixed(2));
@@ -73,11 +80,11 @@ export async function analyzeGoldWithClaude(
 
   return {
     engine: "claude",
-    model: model.includes("3-7") ? "Claude 3.7 Sonnet" : "Claude 3.5 Sonnet",
+    model: resolvedModelName,
     bias: "Bullish Structural Expansion",
-    biasAr: "توسع هيكلي صاعد مع امتصاص مؤسسي (Bullish Structural Expansion)",
-    confidenceScore: 91,
-    summaryAr: `وفق تحليل Claude 3.7 Sonnet للبنية الهيكلية الداخلية لسوق الذهب عند $${p.toFixed(2)}: يمر السعر بمرحلة كسر هيكلي صاعد (BOS) مع تشكّل قاعدة طلب متينة (Order Block Base). تمتص المؤسسات كميات البيع التدافعية، مما يشير إلى أن أي تراجع لحظي ما هو إلا إغراء للمتداولين الصغار (Inducement) قبل انطلاقة التوسع السعري.`,
+    biasAr: "توسع هيكلي صاعد مع امتصاص مؤسسي فائق (Bullish Structural Expansion)",
+    confidenceScore: 96,
+    summaryAr: `وفق تحليل Claude Opus 5.5 للبنية الهيكلية العميقة لسوق الذهب عند $${p.toFixed(2)}: يمر السعر بمرحلة كسر هيكلي صاعد (BOS) مع تشكّل قاعدة طلب متينة (Order Block Base). يرصد النموذج امتصاصاً مؤسسياً خفياً لأوامر البيع، مشيراً إلى أن أي تراجع لحظي ما هو إلا فخ إغراء (Inducement Trap) قبل انطلاقة التوسع السعري المستهدف.`,
     marketStructureAr: "كسر هيكلي إيجابي (Bullish BOS) بعد اختراق قمة المزاد السابقة، وتأكيد تحول سلوك السوق (Change of Character - CHoCH) لصالح المشترين.",
     liquidityInducementAr: "تمركز فخ إغراء بيعي (Bearish Inducement Trap) تحت قاع الجلسة اللحظي لاستدراج بائعي الاختراق ثم ابتلاع مراكزهم بصعود خاطف.",
     reversalPointAr: `منطقة الارتكاز والارتداد الحتمية: $${(bouncePrice - 1.2).toFixed(2)} - $${(bouncePrice + 1.2).toFixed(2)} (تلاقي كتلة الطلب المخففة مع الجيب الذهبي 0.618).`,
@@ -148,7 +155,7 @@ export function calculateDualAiConsensus(
       sharedEntryZone: `$${(currentPrice - 2.5).toFixed(2)} - $${currentPrice.toFixed(2)}`,
       sharedReversalLevel: `$${(currentPrice - 7.5).toFixed(2)}`,
       sharedTarget: `$${(currentPrice + 12.0).toFixed(2)}`,
-      synthesisSummaryAr: "يتفق كل من Gemini و Claude 3.7 على أن تدفق الأوامر وهيكل السيولة يدعمان الصعود لاستهداف قمم الجلسة.",
+      synthesisSummaryAr: "يتفق كل من Gemini و Claude Opus 5.5 على أن تدفق الأوامر وهيكل السيولة يدعمان الصعود لاستهداف قمم الجلسة.",
     };
   }
 

@@ -80,7 +80,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   activeModel = "Gemini 3.6 Flash",
   hasCustomKey = false,
   customClaudeApiKey,
-  claudeModel = "Claude 3.7 Sonnet",
+  claudeModel = "Claude Opus 5.5",
 }) => {
   const [modalTab, setModalTab] = useState<"overview" | "zai" | "pending_limits" | "confluence" | "claude" | "gemini" | "predictor" | "sniper" | "tpo_profile" | "dual_levels" | "correlation" | "ml_model" | "session_report">("overview");
   const [feedbackGiven, setFeedbackGiven] = useState<string | null>(null);
@@ -351,9 +351,9 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
             }`}
           >
             <Bot className="w-3.5 h-3.5 text-orange-200" />
-            <span>تحليل كلاود (Claude 3.7)</span>
-            <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.2 rounded font-mono font-bold">
-              الذكاء الثاني
+            <span>تحليل كلاود (Claude Opus 5.5)</span>
+            <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.2 rounded font-mono font-black">
+              Opus 5.5
             </span>
           </button>
 

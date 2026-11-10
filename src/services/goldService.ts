@@ -1179,7 +1179,7 @@ export async function analyzeOrderFlowWithGemini(params: {
       pocPrice: params.pocPrice,
       fvgZones: params.fvgZones,
       timeframe: params.timeframe,
-      preferredModel: params.preferredModel || "gemini-3.6-flash",
+      preferredModel: params.preferredModel || "gemini-3.8-flash",
       customApiKey: params.customApiKey,
       macroCorrelation: {
         dxyAnalysis: macro.dxyAnalysisAr,
@@ -1222,7 +1222,7 @@ export async function analyzeOrderFlowWithGemini(params: {
         return {
           bias: data.biasAr || data.bias || (isBullish ? "تجميع شرائي مؤسسي صاعد" : "تصريف بيعي مؤسسي هابط"),
           confidenceScore: adjustedConfidence,
-          summary: data.summaryAr || data.summary || "تم تحليل بيانات تدفق الأوامر والسيولة اللحظية بنجاح عبر Gemini.",
+          summary: data.summaryAr || data.summary || "تم تحليل بيانات تدفق الأوامر والسيولة اللحظية بنجاح عبر خادم Gemini المؤسسي.",
           liquidityAnalysis: data.institutionalActivityAr || data.liquidityAnalysis || `أحواض السيولة: BSL عند ${params.bslLevels[0] || `$${(price + 8).toFixed(2)}`} ، SSL عند ${params.sslLevels[0] || `$${(price - 8).toFixed(2)}`}`,
           orderFlowInsight: data.dxyCorrelationInsightAr || data.orderFlowInsight || `دلتا الفوت برنت: ${params.delta} مع تمركز الـ POC عند ${params.pocPrice}. مسار CVD: ${params.cvdTrend}.`,
           dualSmartLevels: dualLevels,
@@ -1253,75 +1253,7 @@ export async function analyzeOrderFlowWithGemini(params: {
       }
     }
   } catch (err) {
-    console.warn("Server Gemini call notice, attempting direct client-side Gemini fallback:", err);
-  }
-
-  // 2. Direct client-side Gemini call if server proxy failed (e.g. Installed standalone app, Capacitor APK, or offline server)
-  if (params.customApiKey && params.customApiKey.trim()) {
-    try {
-      const directData = await directGeminiAnalyzeOrderFlow(
-        params.customApiKey.trim(),
-        {
-          currentPrice: price,
-          delta: params.delta,
-          cvdTrend: params.cvdTrend,
-          footprintImbalance: params.footprintImbalance,
-          bslLevels: params.bslLevels,
-          sslLevels: params.sslLevels,
-          pocPrice: params.pocPrice,
-          fvgZones: params.fvgZones,
-          timeframe: params.timeframe,
-          macroCorrelation: {
-            dxyAnalysis: macro.dxyAnalysisAr,
-            sentiment: macro.overallSentimentAr,
-          },
-        },
-        params.preferredModel || "gemini-2.5-flash"
-      );
-
-      if (directData && (directData.summaryAr || directData.summary)) {
-        const isBullish =
-          directData.bias?.toLowerCase().includes("bull") ||
-          directData.biasAr?.includes("صاعد") ||
-          directData.tradeSetup?.action === "BUY";
-
-        const confidence = directData.confidence || directData.confidenceScore || 92;
-
-        return {
-          bias: directData.biasAr || directData.bias || (isBullish ? "تجميع شرائي مؤسسي صاعد" : "تصريف بيعي مؤسسي هابط"),
-          confidenceScore: confidence,
-          summary: directData.summaryAr || directData.summary || "تم تحليل بيانات تدفق الأوامر والسيولة اللحظية بنجاح عبر Google Gemini المباشر.",
-          liquidityAnalysis: directData.institutionalActivityAr || directData.liquidityAnalysis || `أحواض السيولة: BSL عند ${params.bslLevels[0] || `$${(price + 8).toFixed(2)}`} ، SSL عند ${params.sslLevels[0] || `$${(price - 8).toFixed(2)}`}`,
-          orderFlowInsight: directData.dxyCorrelationInsightAr || directData.orderFlowInsight || `دلتا الفوت برنت: ${params.delta} مع تمركز الـ POC عند ${params.pocPrice}. مسار CVD: ${params.cvdTrend}.`,
-          dualSmartLevels: dualLevels,
-          macroCorrelation: {
-            dxyImpact: macro.dxyAnalysisAr,
-            macroAlignment: macro.overallSentimentAr,
-            silverConfirmation: macro.assets.find((a) => a.symbol === "XAG/USD")?.impactDescriptionAr || "الفضة تؤكد التوافق المؤسسي لحركة الذهب.",
-          },
-          setup: {
-            type: directData.tradeSetup?.actionAr || (isBullish ? "شراء مؤسسي مؤكد (Buy Setup)" : "بيع مكشوف مؤكد (Sell Setup)"),
-            entryZone: directData.tradeSetup?.entryZone || `$${(price - 1.25).toFixed(2)} - $${price.toFixed(2)}`,
-            stopLoss: directData.tradeSetup?.stopLoss || (isBullish ? `$${(price - 4.5).toFixed(2)}` : `$${(price + 4.5).toFixed(2)}`),
-            takeProfit1: directData.tradeSetup?.takeProfit1 || (params.bslLevels[0] || `$${(price + 8.5).toFixed(2)}`),
-            takeProfit2: directData.tradeSetup?.takeProfit2 || `$${(price + 16.0).toFixed(2)}`,
-            riskRewardRatio: directData.tradeSetup?.riskReward || "1 : 3.1",
-          },
-          sniperSetup: generateSniperPrecisionSetup({
-            currentPrice: price,
-            tpoReport,
-            macroReport: macro,
-            aiBias: isBullish ? "BUY" : "SELL",
-            orderFlowDelta: params.delta,
-          }),
-          keyAdvice: `🧠 [Google Gemini مباشر على التطبيق]: ${directData.warningsAr?.[0] || "التزم بوقف الخسارة المحكم المعتمد على مستويات POC والسيولة المؤسسية."}`,
-          learningStats: learning,
-          marketProfile: tpoReport,
-        };
-      }
-    } catch (directErr) {
-      console.warn("Direct Gemini call error, falling back to algorithmic confluence:", directErr);
-    }
+    console.warn("Server Gemini call notice, using algorithmic confluence:", err);
   }
 
   // Graceful institutional fallback if server or network times out

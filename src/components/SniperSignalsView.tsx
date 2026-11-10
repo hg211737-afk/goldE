@@ -61,7 +61,7 @@ export const SniperSignalsView: React.FC<SniperSignalsViewProps> = ({
   isAiLoading = false,
   onNavigateToView,
 }) => {
-  const [selectedDirection, setSelectedDirection] = useState<"AUTO" | "BUY" | "SELL">("AUTO");
+  const [selectedDirection, setSelectedDirection] = useState<"AUTO" | "BUY" | "SELL" | "WAIT">("AUTO");
   const [historyTab, setHistoryTab] = useState<boolean>(false);
   const [zaiEvalMode, setZaiEvalMode] = useState<"AUTO" | "FORCE_ACTIVE" | "FORCE_WAIT">("AUTO");
   const [zaiCopied, setZaiCopied] = useState<boolean>(false);
@@ -182,6 +182,16 @@ export const SniperSignalsView: React.FC<SniperSignalsViewProps> = ({
             >
               بيع فقط (Sell)
             </button>
+            <button
+              onClick={() => setSelectedDirection("WAIT")}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                selectedDirection === "WAIT"
+                  ? "bg-amber-600 text-white shadow-xs"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              حالة الانتظار (Wait)
+            </button>
           </div>
 
           {onRefresh && (
@@ -196,6 +206,72 @@ export const SniperSignalsView: React.FC<SniperSignalsViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* QUICK SYSTEM SHORTCUTS STRIP (NEW ADVANCED MODULES) */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <span className="text-[11px] text-slate-400 font-bold whitespace-nowrap">
+          أدوات التحليل المؤسسي المتطورة:
+        </span>
+        {onNavigateToView && (
+          <>
+            <button
+              onClick={() => onNavigateToView("argon4")}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-950 via-slate-900 to-indigo-950 hover:from-cyan-900 hover:to-indigo-900 text-cyan-300 border border-cyan-400/50 flex items-center gap-1.5 whitespace-nowrap cursor-pointer shadow-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
+              <span>ARGON4 PRO (العقل المركزي)</span>
+            </button>
+            <button
+              onClick={() => onNavigateToView("pre_session_roadmap")}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+            >
+              <Compass className="w-3.5 h-3.5 text-cyan-400" />
+              <span>خريطة الجلسات المسبقة</span>
+            </button>
+            <button
+              onClick={() => onNavigateToView("analytical_memory")}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+            >
+              <History className="w-3.5 h-3.5 text-emerald-400" />
+              <span>الذاكرة وسجل تدقيق الصفقات</span>
+            </button>
+            <button
+              onClick={() => onNavigateToView("gann_cycles")}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-purple-300 border border-purple-500/30 flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+            >
+              <Activity className="w-3.5 h-3.5 text-purple-400" />
+              <span>مربع جان ودورات السعر والزمن</span>
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* DISCIPLINED WAIT CARD IF SELECTED OR TRIGGERED */}
+      {selectedDirection === "WAIT" && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-[#1e1509] border border-amber-500/40 space-y-2.5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-amber-400" />
+              <h3 className="text-sm font-bold text-white">
+                حالة الامتناع والانتظار المنضبط (Disciplined Standstill - WAIT)
+              </h3>
+            </div>
+            <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold font-mono">
+              حماية رأس المال أولاً
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            الامتناع عن التداول هو قرار استثماري احترافي من الطراز الأول؛ يمتنع المحرك المؤسسي عن إعطاء أي أمر شراء أو بيع في الحالات التالية: (1) تعارض دلتا الحجم في الفوت برنت مع حركة السعر، (2) اقتراب موعد خبر عالي التأثير غير متوقع، (3) تداول السعر داخل المنطقة المحايدة (Chop Zone) دون سحب سيولة واضح SSL أو BSL.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-[11px] pt-1 border-t border-slate-800 text-slate-400">
+            <div>الوضع الحالي: <span className="text-amber-400 font-bold">مراقبة دفاعية</span></div>
+            <div>نطاق الأمان: <span className="text-white font-bold">${(currentPrice - 6.5).toFixed(2)} - ${(currentPrice + 7.2).toFixed(2)}</span></div>
+            <div>شرط الخروج من الانتظار: <span className="text-emerald-400 font-bold">اكتمال كسر هيكلي مع تأكيد الدلتا</span></div>
+          </div>
+        </div>
+      )}
 
       {/* Live Market Precision Ribbon */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">

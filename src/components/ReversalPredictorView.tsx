@@ -48,7 +48,7 @@ export const ReversalPredictorView: React.FC<ReversalPredictorViewProps> = ({
   liquidityZones = [],
   timeframe = "5m",
   customApiKey,
-  preferredModel = "gemini-2.5-flash",
+  preferredModel = "gemini-3.1-flash-lite",
 }) => {
   const [prediction, setPrediction] = useState<GoldMovementPrediction>(() =>
     generateMovementPrediction({ currentPrice, bars, liquidityZones, timeframe })

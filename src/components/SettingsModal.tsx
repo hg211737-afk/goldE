@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   SlidersVertical,
   X,
@@ -14,6 +14,9 @@ import {
   RefreshCw,
   Sparkles,
   ExternalLink,
+  Newspaper,
+  ShieldCheck,
+  Flame,
 } from "lucide-react";
 import { AppSettings } from "../types";
 import { testGeminiApiKey } from "../services/geminiClientService";
@@ -32,7 +35,7 @@ interface SettingsModalProps {
   onResyncFeed?: () => void;
 }
 
-type TabType = "ai" | "feed" | "orderflow";
+type TabType = "ai" | "news" | "feed" | "orderflow";
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
@@ -56,7 +59,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [claudeTestMessage, setClaudeTestMessage] = useState<string>("");
   const [claudeSaveNotice, setClaudeSaveNotice] = useState<boolean>(false);
 
-  if (!isOpen) return null;
+  // OpenAI Settings State
+  const [openAIKeyInput, setOpenAIKeyInput] = useState(settings.customOpenAIApiKey || "");
+  const [showOpenAIKey, setShowOpenAIKey] = useState(false);
+  const [openAITestStatus, setOpenAITestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
+  const [openAITestMessage, setOpenAITestMessage] = useState<string>("");
+  const [openAISaveNotice, setOpenAISaveNotice] = useState<boolean>(false);
+  const [openAIActiveModel, setOpenAIActiveModel] = useState<string>("gpt-4o");
+
+  // Live News Monitor State
+  const [newsAsset, setNewsAsset] = useState<"gold" | "bitcoin">("gold");
+  const [liveNewsItems, setLiveNewsItems] = useState<any[]>([]);
+  const [isLoadingNews, setIsLoadingNews] = useState(false);
 
   const handleSaveApiKey = () => {
     const trimmed = apiKeyInput.trim();
@@ -82,16 +96,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  const handleSaveOpenAIApiKey = () => {
+    const trimmed = openAIKeyInput.trim();
+    onUpdateSettings({ customOpenAIApiKey: trimmed });
+    try {
+      localStorage.setItem("gold_orderflow_openai_key", trimmed);
+      setOpenAISaveNotice(true);
+      setTimeout(() => setOpenAISaveNotice(false), 2500);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleTestOpenAIApiKey = async () => {
+    const keyToTest = openAIKeyInput.trim() || settings.customOpenAIApiKey || "";
+    setOpenAITestStatus("testing");
+    setOpenAITestMessage("جاري فحص الاتصال بخوادم OpenAI والتحقق من محرك GPT-4o...");
+    try {
+      const res = await fetch("/api/openai/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: keyToTest }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setOpenAITestStatus("success");
+        setOpenAITestMessage(data.messageAr || "تم التحقق بنجاح! محرك OpenAI GPT-4o نشط 100%.");
+        if (data.activeModel) setOpenAIActiveModel(data.activeModel);
+        handleSaveOpenAIApiKey();
+      } else {
+        setOpenAITestStatus("error");
+        setOpenAITestMessage(data.messageAr || "تعذر التحقق من مفتاح OpenAI.");
+      }
+    } catch (err: any) {
+      setOpenAITestStatus("error");
+      setOpenAITestMessage("تعذر الفحص: " + (err?.message || "يرجى التحقق من اتصال الإنترنت"));
+    }
+  };
+
   const handleTestClaudeApiKey = async () => {
     const keyToTest = claudeKeyInput.trim() || settings.customClaudeApiKey || "";
-    if (!keyToTest) {
-      setClaudeTestStatus("error");
-      setClaudeTestMessage("يرجى إدخال مفتاح Claude API أولاً.");
-      return;
-    }
-
     setClaudeTestStatus("testing");
-    setClaudeTestMessage("جاري فحص الاتصال بخوادم Anthropic Claude...");
+    setClaudeTestMessage("جاري فحص الاتصال بمحرك Anthropic Claude 3.7 Sonnet المؤسسي...");
     try {
       const res = await fetch("/api/claude/test-key", {
         method: "POST",
@@ -101,7 +147,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const data = await res.json();
       if (data.valid) {
         setClaudeTestStatus("success");
-        setClaudeTestMessage(data.message);
+        setClaudeTestMessage(data.message || "تم التحقق بنجاح! محرك Claude Opus 5.5 نشط 100%.");
         handleSaveClaudeApiKey();
       } else {
         setClaudeTestStatus("error");
@@ -115,16 +161,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleTestApiKey = async () => {
     const keyToTest = apiKeyInput.trim() || settings.customGeminiApiKey || "";
-    if (!keyToTest) {
-      setTestStatus("error");
-      setTestMessage("يرجى إدخال مفتاح Gemini API أولاً للبدء بالفحص.");
-      return;
-    }
-
     setTestStatus("testing");
-    setTestMessage("جاري فحص الاتصال والتحقق من صلاحية المفتاح...");
+    setTestMessage("جاري فحص الاتصال بخوادم Google والتحقق من نموذج Gemini المدمج...");
     try {
-      const result = await testGeminiApiKey(keyToTest, settings.aiModel || "gemini-2.5-flash");
+      const result = await testGeminiApiKey(keyToTest, settings.aiModel || "gemini-3.8-flash");
       if (result.valid) {
         setTestStatus("success");
         setTestMessage(result.message);
@@ -138,6 +178,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setTestMessage("تعذر الفحص: " + (err?.message || "يرجى التحقق من اتصال الإنترنت"));
     }
   };
+
+  const fetchLiveNews = async (asset: "gold" | "bitcoin") => {
+    setIsLoadingNews(true);
+    try {
+      const res = await fetch(`/api/news/live?asset=${asset}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.news && Array.isArray(data.news)) {
+          setLiveNewsItems(data.news);
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsLoadingNews(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && activeTab === "news") {
+      fetchLiveNews(newsAsset);
+    }
+  }, [isOpen, activeTab, newsAsset]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -162,25 +227,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-1 px-4 pt-3 pb-1 border-b border-slate-800/80 bg-slate-950/40 text-xs">
+        <div className="flex items-center gap-1 px-4 pt-3 pb-1 border-b border-slate-800/80 bg-slate-950/40 text-xs overflow-x-auto">
           <button
             onClick={() => setActiveTab("ai")}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "ai"
                 ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
             }`}
           >
             <Key className="w-3.5 h-3.5" />
-            <span>مفتاح الذكاء الاصطناعي (Gemini API)</span>
-            {settings.customGeminiApiKey && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
-            )}
+            <span>محركات الذكاء الاصطناعي (Gemini + Claude + OpenAI)</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
+          </button>
+
+          <button
+            onClick={() => setActiveTab("news")}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === "news"
+                ? "bg-red-500/15 text-red-400 border border-red-500/30"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+            }`}
+          >
+            <Newspaper className="w-3.5 h-3.5" />
+            <span>تتبع الأخبار اللحظي (Live News Wire)</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-red-500/20 text-red-400 text-[9px] font-mono border border-red-500/30">بث حي</span>
           </button>
 
           <button
             onClick={() => setActiveTab("feed")}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "feed"
                 ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
@@ -192,7 +268,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <button
             onClick={() => setActiveTab("orderflow")}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "orderflow"
                 ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
@@ -341,12 +417,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label className="text-slate-300 font-semibold block">نموذج الذكاء الاصطناعي المعتمد للتحليل:</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
-                    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", desc: "النموذج الرسمي الأحدث فائق السرعة والدقة (موصى به)" },
-                    { id: "gemini-flash-latest", label: "Gemini Flash Latest", desc: "أحدث إصدار فلاش تلقائياً من خوادم Google" },
-                    { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite", desc: "استجابة فورية فائقة السرعة للأجهزة المحمولة" },
-                    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", desc: "استدلال وتحليل استراتيجي عميق لمحافظ الحيتان" },
+                    { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", desc: "النموذج الذكي الرسمي الأحدث للتحليل الفني وتدفق الأوامر والسيولة (موصى به - نشط)" },
+                    { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite", desc: "نموذج فائق السرعة والاستجابة الفورية لبيانات السوق" },
+                    { id: "gemini-flash-latest", label: "Gemini Flash Latest", desc: "تحديث تلقائي مستمر ومباشر من Google AI" },
+                    { id: "gemini-flash-lite-latest", label: "Gemini Flash Lite Latest", desc: "أحدث إصدار خفيف فائق الكفاءة" },
                   ].map((m) => {
-                    const isSelected = (settings.aiModel || "gemini-2.5-flash") === m.id;
+                    const isSelected = (settings.aiModel || "gemini-3.8-flash") === m.id;
                     return (
                       <button
                         key={m.id}
@@ -379,9 +455,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="flex items-start gap-2.5">
                     <Bot className="w-5 h-5 text-orange-400 mt-0.5 shrink-0" />
                     <div className="space-y-1">
-                      <p className="text-xs font-bold text-orange-300">الذكاء الاصطناعي الثاني: Claude 3.7 Sonnet (Anthropic)</p>
+                      <p className="text-xs font-bold text-orange-300">الذكاء الاصطناعي الثاني: Claude Opus 5.5 (Anthropic)</p>
                       <p className="text-[11px] text-slate-300 leading-relaxed">
-                        يدعم التطبيق الآن محرك Claude 3.7 / 3.5 المتخصص في هندسة السيولة الذكية (Smart Money Concepts) وتحديد مناطق الكسر الهيكلي (BOS/CHoCH) جنباً إلى جنب مع Gemini.
+                        يدعم التطبيق الآن محرك Claude Opus 5.5 المتخصص في الاستدلال الفائق وهندسة السيولة الذكية (Smart Money Concepts) وتحديد مناطق الكسر الهيكلي (BOS/CHoCH) جنباً إلى جنب مع Gemini.
                       </p>
                     </div>
                   </div>
@@ -500,17 +576,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {/* Claude Model Selection */}
                 <div className="space-y-2 pt-2 border-t border-slate-800">
                   <label className="text-slate-300 font-semibold block">نموذج Claude المعتمد:</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
-                      { id: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet", desc: "أقوى نموذج استدلال هيكلي لمفاهيم SMC (موصى به)" },
+                      { id: "claude-opus-5-5-2026", label: "Claude Opus 5.5", desc: "أعلى نموذج استدلال هيكلي لمفاهيم SMC والسيولة الكلية (موصى به - نشط)" },
+                      { id: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet", desc: "استدلال متطور للسيولة والشموع المؤسسية" },
                       { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet", desc: "تحليل عالي الدقة للسيولة والفجوات السعرية" },
                       { id: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku", desc: "استجابة فورية خفيفة وسريعة للذهب" },
                     ].map((m) => {
-                      const isSelected = (settings.claudeModel || "claude-3-7-sonnet-20250219") === m.id || (settings.claudeModel?.includes("3.7") && m.id.includes("3-7"));
+                      const isSelected =
+                        (settings.claudeModel || "claude-opus-5-5-2026") === m.id ||
+                        (settings.claudeModel?.includes("Opus") && m.id.includes("opus")) ||
+                        (settings.claudeModel?.includes("5.5") && m.id.includes("5-5"));
                       return (
                         <button
                           key={m.id}
-                          onClick={() => onUpdateSettings({ claudeModel: m.id })}
+                          onClick={() => {
+                            onUpdateSettings({ claudeModel: m.id });
+                            try {
+                              localStorage.setItem("gold_orderflow_claude_model", m.id);
+                            } catch {}
+                          }}
                           className={`p-2.5 rounded-xl border text-right transition-all cursor-pointer ${
                             isSelected
                               ? "bg-orange-500/15 border-orange-400 text-orange-300 shadow-sm"
@@ -525,10 +610,257 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* OPENAI (GPT-4o) CONFIGURATION */}
+              <div className="space-y-4 pt-4 border-t border-slate-800">
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/30">
+                  <div className="flex items-start gap-2.5">
+                    <ShieldCheck className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-emerald-300">الذكاء الاصطناعي الثالث: OpenAI GPT-4o & Ensemble ML</p>
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        محرك OpenAI الرسمي المدمج ونماذج الاستدلال المتطورة (GPT-4o / o1-mini) المدعومة بشبكة عصبية مدربة على 10 سنوات وتتبع الأخبار اللحظي.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* OpenAI Key Input */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-slate-300 font-semibold flex items-center gap-1.5">
+                      <Key className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>مفتاح OpenAI API الشخصي (اختياري - مفعّل تلقائياً):</span>
+                    </label>
+                    <a
+                      href="https://platform.openai.com/api-keys"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 hover:underline"
+                    >
+                      <span>منصة OpenAI Platform</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+
+                  <div className="relative flex items-center">
+                    <input
+                      type={showOpenAIKey ? "text" : "password"}
+                      value={openAIKeyInput}
+                      onChange={(e) => {
+                        setOpenAIKeyInput(e.target.value);
+                        setOpenAITestStatus("idle");
+                      }}
+                      placeholder="sk-proj-... أو اترك الحقل فارغاً للاعتماد على المفتاح المؤسسي المدمج النشط"
+                      className="w-full pl-24 pr-10 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 font-mono text-xs focus:outline-hidden focus:border-emerald-400 transition-colors"
+                    />
+                    <div className="absolute right-3 text-slate-400">
+                      <Key className="w-4 h-4" />
+                    </div>
+                    <div className="absolute left-2.5 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowOpenAIKey(!showOpenAIKey)}
+                        className="p-1 rounded text-slate-400 hover:text-slate-200 cursor-pointer"
+                        title={showOpenAIKey ? "إخفاء" : "إظهار"}
+                      >
+                        {showOpenAIKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                      {openAIKeyInput && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenAIKeyInput("");
+                            onUpdateSettings({ customOpenAIApiKey: "" });
+                            try { localStorage.removeItem("gold_orderflow_openai_key"); } catch {}
+                            setOpenAITestStatus("idle");
+                          }}
+                          className="p-1 rounded text-slate-400 hover:text-rose-400 cursor-pointer text-xs"
+                          title="مسح"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* OpenAI Test & Save Buttons */}
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
+                    <button
+                      onClick={handleTestOpenAIApiKey}
+                      disabled={openAITestStatus === "testing"}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {openAITestStatus === "testing" ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>جاري فحص المفتاح...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>فحص واختبار مفتاح OpenAI</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={handleSaveOpenAIApiKey}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-all cursor-pointer"
+                    >
+                      <span>حفظ المفتاح</span>
+                    </button>
+
+                    {openAISaveNotice && (
+                      <span className="text-[11px] text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>تم حفظ مفتاح OpenAI بنجاح!</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* OpenAI Test Status Feedback */}
+                  {openAITestStatus === "success" && (
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{openAITestMessage}</span>
+                    </div>
+                  )}
+
+                  {openAITestStatus === "error" && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px] flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{openAITestMessage}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* OpenAI Model Selection */}
+                <div className="space-y-2 pt-2 border-t border-slate-800">
+                  <label className="text-slate-300 font-semibold block">نموذج OpenAI المعتمد للتحليل والتنبؤ:</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {[
+                      { id: "gpt-4o", label: "GPT-4o", desc: "النموذج الأقوى للأوامر المؤسسية والأخبار اللحظية (موصى به)" },
+                      { id: "gpt-4o-mini", label: "GPT-4o Mini", desc: "أداء فائق السرعة واستجابة فورية" },
+                      { id: "o1-mini", label: "o1-mini (Reasoning)", desc: "استدلال رياضي معقد لبيانات LSTM و XGBoost" },
+                    ].map((m) => {
+                      const isSelected = (settings.openAIModel || "gpt-4o") === m.id || openAIActiveModel === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => onUpdateSettings({ openAIModel: m.id })}
+                          className={`p-2.5 rounded-xl border text-right transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-emerald-500/15 border-emerald-400 text-emerald-300 shadow-sm"
+                              : "bg-slate-950/60 border-slate-800/80 text-slate-300 hover:bg-slate-900"
+                          }`}
+                        >
+                          <div className="font-mono font-bold text-xs">{m.label}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">{m.desc}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* TAB 2: LIVE GOLD FEED */}
+          {/* TAB: LIVE NEWS WIRE MONITOR */}
+          {activeTab === "news" && (
+            <div className="space-y-4">
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-red-500/10 via-amber-500/5 to-transparent border border-red-500/30 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Flame className="w-5 h-5 text-red-400 shrink-0" />
+                  <div>
+                    <h3 className="text-xs font-bold text-white flex items-center gap-2">
+                      <span>بث الأخبار اللحظي العاجل (Live Real-Time News Wire)</span>
+                      <span className="w-2 h-2 rounded-full bg-red-400 animate-ping inline-block" />
+                    </h3>
+                    <p className="text-[11px] text-slate-300">
+                      يتم تغذية جميع محركات الذكاء الاصطناعي (Gemini, Claude, GPT-4o) بهذه الأخبار تلقائياً لتحليل تأثيرها على الذهب والبيتكوين.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => fetchLiveNews(newsAsset)}
+                  disabled={isLoadingNews}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs flex items-center gap-1.5 border border-slate-700 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingNews ? "animate-spin" : ""}`} />
+                  <span>تحديث</span>
+                </button>
+              </div>
+
+              {/* Asset Filter */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setNewsAsset("gold")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    newsAsset === "gold"
+                      ? "bg-amber-500 text-slate-950 shadow-sm"
+                      : "bg-slate-900 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  أخبار الذهب (XAU/USD)
+                </button>
+                <button
+                  onClick={() => setNewsAsset("bitcoin")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    newsAsset === "bitcoin"
+                      ? "bg-amber-500 text-slate-950 shadow-sm"
+                      : "bg-slate-900 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  أخبار البيتكوين (BTC/USD)
+                </button>
+              </div>
+
+              {/* News Stream List */}
+              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                {isLoadingNews && liveNewsItems.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 flex flex-col items-center gap-2">
+                    <RefreshCw className="w-5 h-5 animate-spin text-amber-400" />
+                    <span>جاري سحب أحدث الأخبار اللحظية من خوادم البث المباشر...</span>
+                  </div>
+                ) : liveNewsItems.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400">
+                    لا توجد أخبار حالية، انقر على تحديث لجلب أحدث البث.
+                  </div>
+                ) : (
+                  liveNewsItems.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 transition-all space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between text-[10px] text-slate-400">
+                        <span className="font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                          {item.source || "Financial Wire"}
+                        </span>
+                        <span className="font-mono text-slate-500">{item.pubDate}</span>
+                      </div>
+                      <h4 className="text-xs font-medium text-slate-100 leading-snug">
+                        {item.title}
+                      </h4>
+                      {item.link && (
+                        <a
+                          href={item.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 hover:underline"
+                        >
+                          <span>قراءة المصدر الأصلي</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: LIVE GOLD FEED */}
           {activeTab === "feed" && (
             <div className="space-y-4">
               <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">

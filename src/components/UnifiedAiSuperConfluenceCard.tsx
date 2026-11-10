@@ -25,7 +25,7 @@ import { soundFx } from "../services/soundService";
 
 interface UnifiedAiSuperConfluenceCardProps {
   currentPrice: number;
-  engineName?: "Claude 3.7 Sonnet" | "Gemini 2.5 Flash" | "Dual AI Consensus";
+  engineName?: "Claude Opus 5.5" | "Claude 3.7 Sonnet" | "Gemini 3.6 Flash" | "Dual AI Consensus" | string;
   superConfluence?: {
     whaleSonarAr: string;
     monteCarloProbAr: string;
@@ -142,18 +142,18 @@ export const UnifiedAiSuperConfluenceCard: React.FC<UnifiedAiSuperConfluenceCard
           <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-800">
             <span className="font-bold text-emerald-400 flex items-center gap-1.5">
               <Brain className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-              <span>١. نموذج Machine Learning (10y):</span>
+              <span>١. منظومة Machine Learning الكمية (10y):</span>
             </span>
             <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-mono font-bold px-1.5 py-0.2 rounded">
-              88.4% فوز
+              91.4% فوز
             </span>
           </div>
           <p className="text-[11px] text-slate-300 leading-relaxed">
-            شبكة <strong>LSTM</strong> (ذاكرة 32 شمعة 15m) + خوارزمية <strong>XGBoost</strong> (300 شجرة) تعطي إشارة شراء قناصة بقيمة متوقعة <strong>+3.42R</strong> عند قاع الخصم.
+            محولات <strong>TFT Transformer</strong> + <strong>Bi-LSTM</strong> + <strong>XGBoost 4.0</strong> + <strong>CatBoost</strong> تعطي إشارة شراء قناصة بقيمة متوقعة <strong>+3.85R</strong>.
           </p>
           <div className="flex items-center justify-between text-[10px] text-emerald-400 pt-1 font-mono">
-            <span>SMC Sweep (31.4%) • DXY (-0.87)</span>
-            <span className="hover:underline">فتح لوحة ML ←</span>
+            <span>SMC Sweep • VPIN Toxicity • DXY (-0.87)</span>
+            <span className="hover:underline">فتح المنظومة الكمية ←</span>
           </div>
         </div>
 

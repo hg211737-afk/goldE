@@ -12,6 +12,7 @@ import {
   Crosshair,
   Droplet,
   Flame,
+  History,
   Landmark,
   Layers,
   Newspaper,
@@ -26,6 +27,7 @@ import {
 import { GoldQuote, Timeframe, ViewMode } from "../types";
 import { PWAInstallButton } from "./PWAInstallButton";
 import { TacticalVoiceCoPilot } from "./TacticalVoiceCoPilot";
+import { soundFx } from "../services/soundService";
 
 interface HeaderProps {
   quote: GoldQuote;
@@ -51,6 +53,8 @@ interface HeaderProps {
   hasCustomApiKey?: boolean;
 }
 
+export type ToolCategory = "all" | "ai" | "orderflow" | "macro" | "news" | "markets";
+
 export const Header: React.FC<HeaderProps> = ({
   quote,
   timeframe,
@@ -69,6 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [prevPrice, setPrevPrice] = useState(quote.price);
   const [flashColor, setFlashColor] = useState<"up" | "down" | null>(null);
   const [isRotating, setIsRotating] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<ToolCategory>("all");
 
   useEffect(() => {
     if (quote.price > prevPrice) {
@@ -83,8 +88,22 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleManualRefresh = () => {
     setIsRotating(true);
+    soundFx.playHudClick();
     if (onRefresh) onRefresh();
-    setTimeout(() => setIsRotating(false), 800);
+    setTimeout(() => {
+      setIsRotating(false);
+      soundFx.playSuccessChime();
+    }, 800);
+  };
+
+  const isToolVisible = (mode: ViewMode) => {
+    if (selectedCategory === "all") return true;
+    if (selectedCategory === "ai") return ["argon4", "zai", "ml_model", "signals", "predictor"].includes(mode);
+    if (selectedCategory === "orderflow") return ["footprint", "heatmap", "cvd", "marketprofile", "radar"].includes(mode);
+    if (selectedCategory === "macro") return ["optionflow", "futures", "warroom", "montecarlo", "gann_cycles", "pre_session_roadmap", "analytical_memory"].includes(mode);
+    if (selectedCategory === "news") return ["pre_news", "session_report"].includes(mode);
+    if (selectedCategory === "markets") return ["bitcoin", "xpl", "tradingview"].includes(mode);
+    return true;
   };
 
   const isPositive = quote.change24h >= 0;
@@ -157,18 +176,18 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="sm:hidden">Gemini</span>
             </button>
 
-            {/* Second AI: Claude */}
+            {/* Second AI: Claude Opus 5.5 */}
             <button
               onClick={onOpenClaudeModal || onOpenAiModal}
               disabled={isAiLoading}
               className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-gradient-to-r from-orange-500 via-amber-600 to-rose-600 hover:from-orange-400 hover:to-amber-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all cursor-pointer active:scale-95 disabled:opacity-50 border border-orange-400/40"
-              title="الذكاء الثاني: تحليل كلاود (Claude 3.7 Sonnet) للهيكل السعري ومصائد السيولة"
+              title="الذكاء الثاني: تحليل كلاود (Claude Opus 5.5) للهيكل السعري ومصائد السيولة والاستدلال الفائق"
             >
               <Bot className={`w-3.5 h-3.5 text-orange-200 ${isAiLoading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">تحليل كلاود (Claude)</span>
               <span className="sm:hidden">كلاود</span>
-              <span className="text-[9px] bg-white/20 text-white px-1 py-0.2 rounded font-mono font-bold hidden md:inline">
-                3.7
+              <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.2 rounded font-mono font-black hidden md:inline">
+                Opus 5.5
               </span>
             </button>
 
@@ -265,6 +284,59 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
+        {/* Category Filter & Master 22 Tools Refresh Bar */}
+        <div className="flex items-center justify-between gap-2 bg-[#0a0e17] border border-slate-800/90 rounded-xl p-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold text-slate-400">تصفية الأدوات:</span>
+            {[
+              { id: "all", label: "الكل", count: 22 },
+              { id: "ai", label: "عقول الذكاء", count: 5 },
+              { id: "orderflow", label: "تدفق الأوامر والسيولة", count: 5 },
+              { id: "macro", label: "الماكرو والذهب", count: 7 },
+              { id: "news", label: "الأخبار والتقارير", count: 2 },
+              { id: "markets", label: "أسواق إضافية", count: 3 },
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => {
+                  soundFx.playHudClick();
+                  setSelectedCategory(cat.id as ToolCategory);
+                }}
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  selectedCategory === cat.id
+                    ? "bg-amber-500 text-slate-950 shadow-[0_0_12px_rgba(245,158,11,0.4)] font-black"
+                    : "bg-slate-900/90 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800"
+                }`}
+              >
+                <span>{cat.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    selectedCategory === cat.id
+                      ? "bg-slate-950 text-amber-300 font-bold"
+                      : "bg-slate-800 text-slate-400"
+                  }`}
+                >
+                  {cat.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Master 22 Tools Synchronized Refresh Button */}
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRotating}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 via-yellow-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-slate-950 text-xs font-black transition-all cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.35)] active:scale-95 disabled:opacity-50"
+            title="تحديث ومزامنة بيانات ومحركات جميع أدوات المنصة الـ 22 فوراً"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isRotating ? "animate-spin" : ""}`} />
+            <span>تحديث كافة الأدوات ⚡</span>
+            <span className="bg-slate-950 text-amber-300 px-1.5 py-0.2 rounded text-[10px] font-mono font-black">
+              22 أداة
+            </span>
+          </button>
+        </div>
+
         {/* Third Row: Timeframes & Mode Selectors */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           {/* Timeframe Pills */}
@@ -286,6 +358,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* View Mode Buttons */}
           <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 flex-wrap">
+            {isToolVisible("bitcoin") && (
             <button
               onClick={() => onViewModeChange("bitcoin")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
@@ -301,6 +374,8 @@ export const Header: React.FC<HeaderProps> = ({
                 أسباب الهبوط 📉
               </span>
             </button>
+            )}
+            {isToolVisible("xpl") && (
             <button
               onClick={() => onViewModeChange("xpl")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
@@ -316,6 +391,8 @@ export const Header: React.FC<HeaderProps> = ({
                 تدفق أوامر
               </span>
             </button>
+            )}
+            {isToolVisible("pre_news") && (
             <button
               onClick={() => onViewModeChange("pre_news")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
@@ -331,6 +408,8 @@ export const Header: React.FC<HeaderProps> = ({
                 CPI/NFP
               </span>
             </button>
+            )}
+            {isToolVisible("ml_model") && (
             <button
               onClick={() => onViewModeChange("ml_model")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
@@ -338,14 +417,16 @@ export const Header: React.FC<HeaderProps> = ({
                   ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)] font-black"
                   : "text-emerald-400 hover:text-emerald-300 hover:bg-slate-800/60"
               }`}
-              title="نموذج Machine Learning مدرب على 10 سنوات بيانات شمعة 15m (LSTM + XGBoost + OpenAI)"
+              title="منظومة Machine Learning الكمية الفائقة (TFT Transformer + Bi-LSTM + XGBoost 4.0 + CatBoost)"
             >
               <Brain className="w-3.5 h-3.5 animate-pulse" />
               <span>نموذج ML (10y)</span>
               <span className="text-[9px] bg-emerald-400 text-slate-950 px-1 py-0.2 rounded font-black hidden sm:inline">
-                LSTM+XGB
+                TFT+BiLSTM+XGB
               </span>
             </button>
+            )}
+            {isToolVisible("session_report") && (
             <button
               onClick={() => onViewModeChange("session_report")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
@@ -361,6 +442,76 @@ export const Header: React.FC<HeaderProps> = ({
                 تقرير
               </span>
             </button>
+            )}
+            {isToolVisible("pre_session_roadmap") && (
+            <button
+              onClick={() => onViewModeChange("pre_session_roadmap")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "pre_session_roadmap"
+                  ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.5)] font-black"
+                  : "text-cyan-400 hover:text-cyan-300 hover:bg-slate-800/60"
+              }`}
+              title="خريطة الجلسات المسبقة: مناطق رد الفعل المخططة ومتابعة طوكيو ولندن ونيويورك"
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>خريطة الجلسات المسبقة</span>
+              <span className="text-[9px] bg-cyan-400 text-slate-950 px-1 py-0.2 rounded font-black hidden sm:inline">
+                خريطة
+              </span>
+            </button>
+            )}
+            {isToolVisible("analytical_memory") && (
+            <button
+              onClick={() => onViewModeChange("analytical_memory")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "analytical_memory"
+                  ? "bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.5)] font-black"
+                  : "text-emerald-400 hover:text-emerald-300 hover:bg-slate-800/60"
+              }`}
+              title="الذاكرة التحليلية للذكاء الاصطناعي: سجل تدقيق الصفقات والاختبار العكسي الحقيقي"
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>الذاكرة والاختبار العكسي</span>
+              <span className="text-[9px] bg-emerald-400 text-slate-950 px-1 py-0.2 rounded font-black hidden sm:inline">
+                تدقيق
+              </span>
+            </button>
+            )}
+            {isToolVisible("gann_cycles") && (
+            <button
+              onClick={() => onViewModeChange("gann_cycles")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "gann_cycles"
+                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)] font-black"
+                  : "text-purple-400 hover:text-purple-300 hover:bg-slate-800/60"
+              }`}
+              title="مربع التسعة لجان وزوايا الاهتزاز ودورات السعر والزمن وحساب تقلبات ATR"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>جان ودورات السعر والزمن</span>
+              <span className="text-[9px] bg-purple-400 text-slate-950 px-1 py-0.2 rounded font-black hidden sm:inline">
+                ATR+Gann
+              </span>
+            </button>
+            )}
+            {isToolVisible("argon4") && (
+            <button
+              onClick={() => onViewModeChange("argon4")}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
+                viewMode === "argon4"
+                  ? "bg-gradient-to-r from-cyan-500 via-indigo-600 to-purple-600 text-white shadow-[0_0_18px_rgba(6,182,212,0.6)] font-black"
+                  : "text-cyan-400 hover:text-cyan-300 hover:bg-slate-800/60"
+              }`}
+              title="العقل التحليلي المركزي ARGON4 PRO: مصفوفة الـ 8 محركات المتخصصة للذهب وتدفق الأوامر وعقود COMEX"
+            >
+              <Cpu className="w-3.5 h-3.5 animate-pulse text-cyan-300" />
+              <span>ARGON4 PRO (أرجون 4)</span>
+              <span className="text-[9px] bg-cyan-500/30 text-cyan-200 border border-cyan-400/50 px-1 py-0.2 rounded font-black animate-pulse">
+                عقل 8E PRO
+              </span>
+            </button>
+            )}
+            {isToolVisible("zai") && (
             <button
               onClick={() => onViewModeChange("zai")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
@@ -376,6 +527,8 @@ export const Header: React.FC<HeaderProps> = ({
                 قرار ذكي
               </span>
             </button>
+            )}
+            {isToolVisible("predictor") && (
             <button
               onClick={() => onViewModeChange("predictor")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
@@ -391,6 +544,8 @@ export const Header: React.FC<HeaderProps> = ({
                 جديد
               </span>
             </button>
+            )}
+            {isToolVisible("radar") && (
             <button
               onClick={() => onViewModeChange("radar")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
@@ -406,6 +561,8 @@ export const Header: React.FC<HeaderProps> = ({
                 سونار
               </span>
             </button>
+            )}
+            {isToolVisible("montecarlo") && (
             <button
               onClick={() => onViewModeChange("montecarlo")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
@@ -421,6 +578,8 @@ export const Header: React.FC<HeaderProps> = ({
                 1000 مسار
               </span>
             </button>
+            )}
+            {isToolVisible("warroom") && (
             <button
               onClick={() => onViewModeChange("warroom")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded transition-all cursor-pointer ${
@@ -433,6 +592,8 @@ export const Header: React.FC<HeaderProps> = ({
               <Landmark className="w-3.5 h-3.5" />
               <span>العمليات السيادية</span>
             </button>
+            )}
+            {isToolVisible("signals") && (
             <button
               onClick={() => onViewModeChange("signals")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
@@ -445,6 +606,8 @@ export const Header: React.FC<HeaderProps> = ({
               <Crosshair className="w-3.5 h-3.5" />
               <span>التوصيات القناصة</span>
             </button>
+            )}
+            {isToolVisible("footprint") && (
             <button
               onClick={() => onViewModeChange("footprint")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
@@ -457,6 +620,8 @@ export const Header: React.FC<HeaderProps> = ({
               <Layers className="w-3.5 h-3.5" />
               <span>فوت برنت</span>
             </button>
+            )}
+            {isToolVisible("heatmap") && (
             <button
               onClick={() => onViewModeChange("heatmap")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
@@ -469,6 +634,8 @@ export const Header: React.FC<HeaderProps> = ({
               <Flame className="w-3.5 h-3.5" />
               <span>هيت ماب</span>
             </button>
+            )}
+            {isToolVisible("cvd") && (
             <button
               onClick={() => onViewModeChange("cvd")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
@@ -481,6 +648,8 @@ export const Header: React.FC<HeaderProps> = ({
               <Activity className="w-3.5 h-3.5" />
               <span>CVD</span>
             </button>
+            )}
+            {isToolVisible("marketprofile") && (
             <button
               onClick={() => onViewModeChange("marketprofile")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
@@ -493,6 +662,8 @@ export const Header: React.FC<HeaderProps> = ({
               <BarChart2 className="w-3.5 h-3.5" />
               <span>بروفايل TPO</span>
             </button>
+            )}
+            {isToolVisible("optionflow") && (
             <button
               onClick={() => onViewModeChange("optionflow")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
@@ -504,6 +675,8 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <span>أوبشن فلو</span>
             </button>
+            )}
+            {isToolVisible("futures") && (
             <button
               onClick={() => onViewModeChange("futures")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
@@ -515,6 +688,8 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <span>الفيوتشر</span>
             </button>
+            )}
+            {isToolVisible("tradingview") && (
             <button
               onClick={() => onViewModeChange("tradingview")}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-all cursor-pointer ${
@@ -527,6 +702,7 @@ export const Header: React.FC<HeaderProps> = ({
               <ChartLine className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">تريدنج فيو</span>
             </button>
+            )}
           </div>
         </div>
       </div>

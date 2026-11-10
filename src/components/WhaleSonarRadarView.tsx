@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Play,
   RotateCcw,
+  RotateCw,
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
@@ -31,6 +32,7 @@ import { voiceAlert } from "../services/voiceAlertService";
 
 interface WhaleSonarRadarViewProps {
   currentPrice: number;
+  onRefresh?: () => void;
 }
 
 export type WhaleRadarTab =
@@ -124,10 +126,21 @@ export interface CmeFuturesWhaleData {
   }>;
 }
 
-export const WhaleSonarRadarView: React.FC<WhaleSonarRadarViewProps> = ({ currentPrice }) => {
+export const WhaleSonarRadarView: React.FC<WhaleSonarRadarViewProps> = ({ currentPrice, onRefresh }) => {
   const [selectedTab, setSelectedTab] = useState<WhaleRadarTab>("whale_alert");
   const [whaleAssetFilter, setWhaleAssetFilter] = useState<string>("ALL");
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    soundFx.playHudClick();
+    if (onRefresh) onRefresh();
+    setTimeout(() => {
+      setIsRefreshing(false);
+      soundFx.playSuccessChime();
+    }, 700);
+  };
 
   const p = currentPrice > 1000 ? currentPrice : 4293.65;
 
@@ -563,6 +576,16 @@ export const WhaleSonarRadarView: React.FC<WhaleSonarRadarViewProps> = ({ curren
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-bold text-xs cursor-pointer shadow-md active:scale-95 disabled:opacity-50"
+            title="تحديث رادار الحيتان وعقود CME وتدفقات PAXG/XAUT"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-amber-400" : ""}`} />
+            <span>تحديث الرادار</span>
+          </button>
+
           <button
             onClick={handleTestAudioSonar}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 font-bold text-xs cursor-pointer shadow-md active:scale-95"

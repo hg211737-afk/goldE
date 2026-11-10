@@ -43,10 +43,10 @@ export const ClaudeAdvancedAnalysisWidget: React.FC<ClaudeAdvancedAnalysisWidget
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm sm:text-base font-black text-white">
-                  تحليل Claude 3.7 المتطور: السيولة • الأخبار • الجلسات
+                  تحليل Claude Opus 5.5 المتطور: السيولة • الأخبار • الجلسات
                 </h3>
                 <span className="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded-full font-bold">
-                  SMC &amp; Macro Pro
+                  Opus 5.5 &amp; Macro Pro
                 </span>
               </div>
               <p className="text-[11px] text-slate-300 mt-0.5">
@@ -78,7 +78,7 @@ export const ClaudeAdvancedAnalysisWidget: React.FC<ClaudeAdvancedAnalysisWidget
       {/* Unified AI Super-Confluence: Connecting Whales, Monte Carlo, Central Banks & Squeeze */}
       <UnifiedAiSuperConfluenceCard
         currentPrice={currentPrice}
-        engineName="Claude 3.7 Sonnet"
+        engineName="Claude Opus 5.5"
         superConfluence={analysis.superConfluenceSynthesis}
       />
 
@@ -224,7 +224,7 @@ export const ClaudeAdvancedAnalysisWidget: React.FC<ClaudeAdvancedAnalysisWidget
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
             <Target className="w-4 h-4 text-orange-400" />
-            <span>خطة التداول المؤسسية المقترحة من Claude 3.7:</span>
+            <span>خطة التداول المؤسسية المقترحة من Claude Opus 5.5:</span>
           </h4>
           <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg">
             العائد للمخاطرة {analysis.tradeSetup.riskReward}
@@ -259,7 +259,7 @@ export const ClaudeAdvancedAnalysisWidget: React.FC<ClaudeAdvancedAnalysisWidget
         </div>
 
         <div className="p-3 rounded-xl bg-orange-950/30 border border-orange-500/30 text-xs text-orange-200">
-          <strong className="text-orange-400 block mb-0.5">نصيحة كلود للمتداول:</strong>
+          <strong className="text-orange-400 block mb-0.5">نصيحة Claude Opus 5.5 للمتداول:</strong>
           {analysis.keyAdvice}
         </div>
       </div>

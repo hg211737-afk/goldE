@@ -40,6 +40,7 @@ interface SessionPerformanceReportProps {
   liquidityZones?: LiquidityZone[];
   onClose?: () => void;
   isModal?: boolean;
+  onRefresh?: () => void;
 }
 
 export const SessionPerformanceReport: React.FC<SessionPerformanceReportProps> = ({
@@ -48,10 +49,22 @@ export const SessionPerformanceReport: React.FC<SessionPerformanceReportProps> =
   liquidityZones = [],
   onClose,
   isModal = false,
+  onRefresh,
 }) => {
   const [filterRange, setFilterRange] = useState<PerformanceFilterRange>("week");
   const [activeTab, setActiveTab] = useState<"overview" | "comparisons" | "audit_log">("overview");
   const [copied, setCopied] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    soundFx.playHudClick();
+    if (onRefresh) onRefresh();
+    setTimeout(() => {
+      setIsRefreshing(false);
+      soundFx.playSuccessChime();
+    }, 600);
+  };
 
   const report: SessionPerformanceReportData = useMemo(() => {
     return generateSessionPerformanceReport(currentPrice, bars, liquidityZones, filterRange);
@@ -132,6 +145,16 @@ export const SessionPerformanceReport: React.FC<SessionPerformanceReportProps> =
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap self-end md:self-center">
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-950/70 hover:bg-blue-900/80 text-blue-200 border border-blue-500/40 text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+              title="تحديث إحصائيات الجلسات وسحوبات السيولة اللحظية"
+            >
+              <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-blue-300" : ""}`} />
+              <span>تحديث التقرير</span>
+            </button>
+
             <button
               onClick={handleVoiceDispatch}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black text-xs shadow-md active:scale-95 cursor-pointer"

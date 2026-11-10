@@ -1,11 +1,20 @@
-import React from "react";
-import { Activity, TrendingUp, TrendingDown, DollarSign, BarChart2, ShieldAlert, Cpu } from "lucide-react";
+import React, { useState } from "react";
+import { Activity, TrendingUp, TrendingDown, DollarSign, BarChart2, ShieldAlert, Cpu, RotateCw } from "lucide-react";
 
 interface FuturesAnalysisViewProps {
   currentPrice: number;
+  onRefresh?: () => void;
 }
 
-export const FuturesAnalysisView: React.FC<FuturesAnalysisViewProps> = ({ currentPrice }) => {
+export const FuturesAnalysisView: React.FC<FuturesAnalysisViewProps> = ({ currentPrice, onRefresh }) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    if (onRefresh) onRefresh();
+    setTimeout(() => setIsRefreshing(false), 700);
+  };
+
   // Simulated Gold Futures COMEX vs Spot metrics
   const futuresPrice = Number((currentPrice + 3.850).toFixed(3));
   const basisSpread = Number((futuresPrice - currentPrice).toFixed(3));
@@ -45,16 +54,28 @@ export const FuturesAnalysisView: React.FC<FuturesAnalysisViewProps> = ({ curren
             متابعة فروق الأسعار (Basis Spread) بين الفوري والآجل، تغير الفائدة المفتوحة (OI)، ومعدلات التمويل.
           </p>
         </div>
-        <div className="flex items-center gap-3 bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-lg font-['JetBrains_Mono']">
-          <div>
-            <span className="text-[10px] text-slate-400 block">سعر العقود الآجلة (COMEX)</span>
-            <span className="text-indigo-400 font-bold">${futuresPrice.toFixed(3)}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-lg font-['JetBrains_Mono']">
+            <div>
+              <span className="text-[10px] text-slate-400 block">سعر العقود الآجلة (COMEX)</span>
+              <span className="text-indigo-400 font-bold">${futuresPrice.toFixed(3)}</span>
+            </div>
+            <div className="w-[1px] h-7 bg-slate-800" />
+            <div>
+              <span className="text-[10px] text-slate-400 block">الفرق (Basis)</span>
+              <span className="text-emerald-400 font-bold">+{basisSpread.toFixed(3)} ($)</span>
+            </div>
           </div>
-          <div className="w-[1px] h-7 bg-slate-800" />
-          <div>
-            <span className="text-[10px] text-slate-400 block">الفرق (Basis)</span>
-            <span className="text-emerald-400 font-bold">+{basisSpread.toFixed(3)} ($)</span>
-          </div>
+
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 text-xs font-bold transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            title="تحديث بيانات كومكس والعقود الآجلة فوراً"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-indigo-400" : ""}`} />
+            <span className="hidden sm:inline">{isRefreshing ? "تحديث..." : "تحديث الفيوتشر"}</span>
+          </button>
         </div>
       </div>
 
